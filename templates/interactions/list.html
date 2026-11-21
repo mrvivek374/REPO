@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <div class="nx-grid nx-grid--stats">
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--forest"><svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ total_interactions }}</div>
+        <div class="nx-stat__label">Total interactions logged</div>
+      </div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--sage"><svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ month_total }}</div>
+        <div class="nx-stat__label">Recorded this month</div>
+      </div>
+    </article>
+    {% if current_user|has_perm:"interactions.add" %}
+    <article class="nx-stat" style="justify-content:space-between">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--sage"><svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__label" style="margin-bottom:8px">Log today’s conversations</div>
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'interactions:create' %}">Record interaction</a>
+      </div>
+    </article>
+    {% endif %}
+  </div>
+
+  <section class="nx-card">
+    <form method="get" class="nx-toolbar" role="search" aria-label="Filter interactions">
+      <div class="nx-search">
+        <svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+        <label class="nx-sr-only" for="interaction-search">Search interactions</label>
+        <input class="nx-input" id="interaction-search" type="search" name="q" value="{{ q }}" placeholder="Search by contact or note…">
+      </div>
+
+      <label class="nx-sr-only" for="filter-type">Interaction type</label>
+      <select class="nx-select" id="filter-type" name="type" data-autosubmit>
+        <option value="">All types</option>
+        {% for value, label in type_choices %}
+          <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <label class="nx-sr-only" for="filter-contact">Contact</label>
+      <select class="nx-select" id="filter-contact" name="contact" data-autosubmit>
+        <option value="">All contacts</option>
+        {% for contact in contacts %}
+          <option value="{{ contact.contact_id }}" {% if contact_filter == contact.contact_id|stringformat:"s" %}selected{% endif %}>{{ contact.name }}</option>
+        {% endfor %}
+      </select>
+
+      <button class="nx-btn nx-btn--ghost nx-btn--sm" type="submit">Apply</button>
+      {% if q or type_filter or contact_filter %}
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'interactions:list' %}">Reset</a>
+      {% endif %}
+      <div class="nx-toolbar__right">
+        <span class="nx-toolbar__count">{{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }}</span>
+      </div>
+    </form>
+
+    <hr class="nx-divider">
+
+    {% if page_obj.object_list %}
+    <div class="nx-table-wrap">
+      <table class="nx-table">
+        <thead>
+          <tr>
+            <th scope="col">Contact</th>
+            <th scope="col">Type</th>
+            <th scope="col">Notes</th>
+            <th scope="col">When</th>
+            <th scope="col">Recorded by</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for interaction in page_obj.object_list %}
+          <tr>
+            <td>
+              <div class="nx-cell">
+                <span class="nx-avatar nx-avatar--sm">{{ interaction.contact.initials }}</span>
+                <div>
+                  <a class="nx-cell__main" href="{% url 'contacts:detail' interaction.contact_id %}">{{ interaction.contact.name }}</a>
+                  <div class="nx-cell__sub">{{ interaction.contact.company|default:"—" }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="nx-badge {% if interaction.interaction_type == 'call' %}nx-badge--forest{% elif interaction.interaction_type == 'meeting' %}nx-badge--sage{% elif interaction.interaction_type == 'email' %}nx-badge--amber{% else %}nx-badge--muted{% endif %}">
+                {{ interaction.get_interaction_type_display }}
+              </span>
+            </td>
+            <td><div class="nx-note-cell">{{ interaction.notes|truncatechars:96 }}</div></td>
+            <td>
+              <div class="nx-cell__main" style="font-size:12.5px">{% nx_date interaction.interaction_date %}</div>
+              <div class="nx-cell__sub">{% nx_time interaction.interaction_date %}</div>
+            </td>
+            <td>{{ interaction.user.name }}</td>
+            <td class="nx-td-actions">
+              <div class="nx-actions">
+                <a class="nx-icon-btn" href="{% url 'contacts:detail' interaction.contact_id %}" title="View contact" data-bs-toggle="tooltip" aria-label="View contact">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+                </a>
+                {% if interaction.user_id == current_user.user_id or current_user|has_perm:"users.manage" %}
+                <button type="button" class="nx-icon-btn nx-icon-btn--danger" title="Delete interaction" data-bs-toggle="tooltip"
+                        data-confirm-url="{% url 'interactions:delete' interaction.interaction_id %}"
+                        data-confirm-title="Delete this interaction?"
+                        data-confirm-text="This note will be removed from {{ interaction.contact.name }}'s history permanently."
+                        data-confirm-action="Delete interaction" aria-label="Delete interaction">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% include "partials/pagination.html" %}
+
+    {% else %}
+    <div class="nx-empty">
+      <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg></span>
+      <div class="nx-empty__title">{% if q or type_filter or contact_filter %}No interactions match your filters{% else %}No interactions recorded yet{% endif %}</div>
+      <p class="nx-empty__text">Every call, meeting and email you log builds the relationship history.</p>
+      {% if current_user|has_perm:"interactions.add" %}
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'interactions:create' %}">Record interaction</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

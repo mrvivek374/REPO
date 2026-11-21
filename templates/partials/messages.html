@@ -1,0 +1,16 @@
+{% load static %}
+{% if messages %}
+<div class="nx-alerts" role="status" aria-live="polite">
+  {% for message in messages %}
+    <div class="nx-alert nx-alert--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}" data-autohide>
+      <span class="nx-alert__icon">
+        <svg><use href="{% static 'img/icons.svg' %}#{% if message.tags == 'error' %}i-alert{% elif message.tags == 'success' %}i-check{% elif message.tags == 'warning' %}i-alert{% else %}i-note{% endif %}"></use></svg>
+      </span>
+      <div class="nx-alert__body">{{ message }}</div>
+      <button type="button" class="nx-alert__close" data-alert-close aria-label="Dismiss message">
+        <svg><use href="{% static 'img/icons.svg' %}#i-x"></use></svg>
+      </button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}

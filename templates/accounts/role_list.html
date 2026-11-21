@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <div class="nx-grid nx-grid--3">
+    {% for role in roles %}
+    <section class="nx-card">
+      <div class="nx-role-card">
+        <div class="nx-card__head" style="margin-bottom:6px">
+          <span class="nx-stat__icon {% if role.role_key == 'admin' %}nx-stat__icon--forest{% elif role.role_key == 'manager' %}nx-stat__icon--sage{% else %}nx-avatar--muted{% endif %}">
+            <svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg>
+          </span>
+          {% if role.is_locked %}
+            <span class="nx-badge nx-badge--forest">Full access</span>
+          {% else %}
+            <a class="nx-card__link" href="{% url 'accounts:role_edit' role.role_id %}">Edit</a>
+          {% endif %}
+        </div>
+        <div>
+          <h2 class="nx-card__title" style="font-size:16px">{{ role.role_name }}</h2>
+          <p class="nx-card__sub">{{ role.description }}</p>
+        </div>
+        <div class="nx-kpi-row">
+          <div class="nx-mini-stat">
+            <div class="nx-mini-stat__value">{{ role.user_total }}</div>
+            <div class="nx-mini-stat__label">Members</div>
+          </div>
+          <div class="nx-mini-stat">
+            <div class="nx-mini-stat__value">{{ role.permission_count }}</div>
+            <div class="nx-mini-stat__label">Permissions</div>
+          </div>
+        </div>
+        {% if role.is_locked %}
+          <p class="nx-help">Administrators always hold every permission and cannot be limited.</p>
+        {% else %}
+          <a class="nx-btn nx-btn--ghost nx-btn--sm nx-btn--block" href="{% url 'accounts:role_edit' role.role_id %}">
+            Configure permissions
+          </a>
+        {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <section class="nx-card nx-card--flush">
+    <div class="nx-card__head" style="padding:22px 22px 0;margin-bottom:14px">
+      <div>
+        <h2 class="nx-card__title">Permission matrix</h2>
+        <p class="nx-card__sub">What each role can do across the workspace.</p>
+      </div>
+    </div>
+    <div class="nx-table-wrap">
+      <table class="nx-table nx-perm-table">
+        <thead>
+          <tr>
+            <th scope="col">Permission</th>
+            {% for role in roles %}<th scope="col">{{ role.role_name }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for group, items in groups %}
+            <tr>
+              <td colspan="{{ roles|length|add:1 }}" style="background:var(--sage-50);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--muted)">{{ group }}</td>
+            </tr>
+            {% for perm in items %}
+            <tr>
+              <td>{{ perm.label }}</td>
+              {% for role in roles %}
+                <td>
+                  {% if role.role_key == "admin" or perm.code in role.permissions %}
+                    <span class="nx-perm-yes"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span>
+                  {% else %}
+                    <span class="nx-perm-no">—</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

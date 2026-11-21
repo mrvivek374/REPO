@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid nx-grid--main">
+
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Application settings</h2>
+          <p class="nx-card__sub">These preferences are stored against your account.</p>
+        </div>
+      </div>
+
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.items_per_page %}
+          {% include "partials/field.html" with field=form.date_format %}
+        </div>
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.notify_followups %}
+          {% include "partials/field.html" with field=form.compact_tables %}
+        </div>
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">Save preferences</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Security</h2>
+            <p class="nx-card__sub">Keep your account protected.</p>
+          </div>
+        </div>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr">
+          <div><dt>Username</dt><dd>@{{ current_user.username }}</dd></div>
+          <div><dt>Email</dt><dd>{{ current_user.email }}</dd></div>
+          <div><dt>Last sign-in</dt><dd>{% if current_user.last_login %}{% nx_datetime current_user.last_login %}{% else %}—{% endif %}</dd></div>
+        </dl>
+        <a class="nx-btn nx-btn--ghost nx-btn--block" style="margin-top:16px" href="{% url 'accounts:password_change' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-lock"></use></svg> Change password
+        </a>
+      </section>
+
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">About this installation</h2>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr;margin-top:12px">
+          <div><dt>Product</dt><dd>NEXORA BCMS v{{ app_version }}</dd></div>
+          <div><dt>Tagline</dt><dd>{{ nexora.TAGLINE }}</dd></div>
+          <div><dt>Data source</dt><dd>MySQL database (live records)</dd></div>
+          <div><dt>Session</dt><dd>Secure server-side session</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

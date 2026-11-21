@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid" style="grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);align-items:start">
+
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">{% if mode == "create" %}New team member{% else %}{{ target.name }}{% endif %}</h2>
+          <p class="nx-card__sub">Accounts control access across the whole workspace.</p>
+        </div>
+        <a class="nx-card__link" href="{% url 'accounts:user_list' %}">Cancel</a>
+      </div>
+
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="nx-alert nx-alert--error">
+            <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+            <div class="nx-alert__body">{{ form.non_field_errors|join:" " }}</div>
+          </div>
+        {% endif %}
+
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.name %}
+          {% include "partials/field.html" with field=form.username %}
+          {% include "partials/field.html" with field=form.email %}
+          {% include "partials/field.html" with field=form.phone %}
+          {% include "partials/field.html" with field=form.job_title %}
+          {% include "partials/field.html" with field=form.role %}
+          {% if mode == "create" %}
+            {% include "partials/field.html" with field=form.password1 %}
+            {% include "partials/field.html" with field=form.password2 %}
+          {% endif %}
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.status %}</div>
+        </div>
+
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">
+            <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg>
+            {% if mode == "create" %}Create account{% else %}Save changes{% endif %}
+          </button>
+          <a class="nx-btn nx-btn--ghost" href="{% url 'accounts:user_list' %}">Cancel</a>
+          {% if mode == "edit" %}
+            <span class="nx-spacer"></span>
+            <span class="nx-help">Joined {% nx_datetime target.date_joined %}</span>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Role guidance</h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg><span><strong>Administrator</strong> — full access including users, roles and deletions.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg><span><strong>Manager</strong> — business oversight, reporting and editing, no user management.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg><span><strong>Staff</strong> — contact updates, interactions and their own follow-ups.</span></div>
+        </div>
+        <p class="nx-help" style="margin-top:12px">Permissions are enforced on the server, not only by hiding menu items.</p>
+      </section>
+
+      {% if mode == "edit" %}
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Account activity</h2>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr;margin-top:12px">
+          <div><dt>Contacts created</dt><dd>{{ target.contacts_created.count }}</dd></div>
+          <div><dt>Interactions recorded</dt><dd>{{ target.interactions.count }}</dd></div>
+          <div><dt>Follow-ups assigned</dt><dd>{{ target.followups_assigned.count }}</dd></div>
+          <div><dt>Last sign-in</dt><dd>{% if target.last_login %}{% nx_datetime target.last_login %}{% else %}Never{% endif %}</dd></div>
+        </dl>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

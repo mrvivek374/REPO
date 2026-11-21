@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid" style="grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);align-items:start">
+
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">{{ page_title }}</h2>
+          <p class="nx-card__sub">Fields marked with <span style="color:var(--danger)">*</span> are required.</p>
+        </div>
+        <a class="nx-card__link" href="{% if contact %}{% url 'contacts:detail' contact.contact_id %}{% else %}{% url 'contacts:list' %}{% endif %}">
+          Cancel
+        </a>
+      </div>
+
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="nx-alert nx-alert--error">
+            <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+            <div class="nx-alert__body">{{ form.non_field_errors|join:" " }}</div>
+          </div>
+        {% endif %}
+
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.name %}
+          {% include "partials/field.html" with field=form.company %}
+          {% include "partials/field.html" with field=form.job_title %}
+          {% include "partials/field.html" with field=form.category %}
+          {% include "partials/field.html" with field=form.phone %}
+          {% include "partials/field.html" with field=form.email %}
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.address %}</div>
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.notes %}</div>
+        </div>
+
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">
+            <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg>
+            {% if mode == "create" %}Save contact{% else %}Save changes{% endif %}
+          </button>
+          <a class="nx-btn nx-btn--ghost" href="{% if contact %}{% url 'contacts:detail' contact.contact_id %}{% else %}{% url 'contacts:list' %}{% endif %}">Cancel</a>
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">
+          <svg style="width:17px;height:17px;color:var(--success)"><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg>
+          Data quality rules
+        </h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Email addresses must be unique across the directory.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Phone numbers are compared by digits, so formatting cannot create duplicates.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Every contact is stamped with the user who created it.</span></div>
+        </div>
+      </section>
+
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Category guidance</h2>
+        <p class="nx-card__sub" style="margin-bottom:10px">Categories drive your reports, so choose thoughtfully.</p>
+        <div class="nx-tag-list">
+          <span class="nx-badge nx-badge--sage">Client</span>
+          <span class="nx-badge nx-badge--amber">Supplier</span>
+          <span class="nx-badge nx-badge--forest">Partner</span>
+          <span class="nx-badge nx-badge--outline">Lead</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

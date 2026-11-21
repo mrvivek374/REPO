@@ -1,0 +1,19 @@
+{% extends "base_public.html" %}
+{% load static %}
+{% block title %}Page not found · NEXORA{% endblock %}
+{% block body %}
+<div class="nx-error-page">
+  <div style="max-width:440px">
+    <div class="nx-brand__mark" style="margin:0 auto 20px;width:56px;height:56px;border-radius:18px;background:var(--forest);color:var(--sage)">{% include "partials/logo_mark.html" %}</div>
+    <div class="nx-error-page__code">404</div>
+    <h1 style="font-size:22px;margin:10px 0 8px">We couldn’t find that page</h1>
+    <p class="nx-muted" style="font-size:13.5px;line-height:1.65">
+      The record may have been deleted, or the link is out of date.
+    </p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:22px">
+      <a href="{% url 'dashboard' %}" class="nx-btn nx-btn--primary">Back to dashboard</a>
+      <a href="{% url 'contacts:list' %}" class="nx-btn nx-btn--ghost">Contact directory</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base_public.html" %}
+{% load static %}
+{% block title %}Access denied · NEXORA{% endblock %}
+{% block body %}
+<div class="nx-error-page">
+  <div style="max-width:440px">
+    <div class="nx-brand__mark" style="margin:0 auto 20px;width:56px;height:56px;border-radius:18px;background:var(--forest);color:var(--sage)">{% include "partials/logo_mark.html" %}</div>
+    <div class="nx-error-page__code">403</div>
+    <h1 style="font-size:22px;margin:10px 0 8px">You don’t have access to this area</h1>
+    <p class="nx-muted" style="font-size:13.5px;line-height:1.65">
+      {{ message|default:"Your role does not include permission for this action. Ask an administrator to review your access." }}
+    </p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:22px">
+      <a href="{% url 'dashboard' %}" class="nx-btn nx-btn--primary">Back to dashboard</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'accounts:profile' %}" class="nx-btn nx-btn--ghost">My profile</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

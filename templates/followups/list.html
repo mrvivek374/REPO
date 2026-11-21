@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <div class="nx-grid nx-grid--stats">
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--amber"><svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ counts.upcoming }}</div>
+        <div class="nx-stat__label">Upcoming</div>
+      </div>
+      <div class="nx-help">Pending tasks with a future due date</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--danger"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ counts.overdue }}</div>
+        <div class="nx-stat__label">Overdue</div>
+      </div>
+      <div class="nx-help">Pending tasks past their due date</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--success"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ counts.completed }}</div>
+        <div class="nx-stat__label">Completed</div>
+      </div>
+      <div class="nx-help">{{ counts.completed|percent:counts.all }}% of all tasks</div>
+    </article>
+    {% if current_user|has_perm:"followups.add" %}
+    <article class="nx-stat" style="justify-content:space-between">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--sage"><svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__label" style="margin-bottom:8px">Plan the next touchpoint</div>
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'followups:create' %}">New follow-up</a>
+      </div>
+    </article>
+    {% endif %}
+  </div>
+
+  <section class="nx-card">
+    <nav class="nx-tabs" aria-label="Follow-up filters">
+      {% for key, label in tabs %}
+        <a class="nx-tab {% if active_tab == key %}is-active{% endif %}" href="{% query_replace tab=key page=1 %}">
+          {{ label }}
+          <span class="nx-tab__count">{{ counts|dict_get:key }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+
+    <form method="get" class="nx-toolbar" role="search" aria-label="Filter follow-ups">
+      <input type="hidden" name="tab" value="{{ active_tab }}">
+      <div class="nx-search">
+        <svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+        <label class="nx-sr-only" for="followup-search">Search follow-ups</label>
+        <input class="nx-input" id="followup-search" type="search" name="q" value="{{ q }}" placeholder="Search by contact or task note…">
+      </div>
+
+      <label class="nx-sr-only" for="filter-assignee">Assigned to</label>
+      <select class="nx-select" id="filter-assignee" name="assignee" data-autosubmit>
+        <option value="">All assignees</option>
+        {% for person in assignees %}
+          <option value="{{ person.user_id }}" {% if assignee_filter == person.user_id|stringformat:"s" %}selected{% endif %}>{{ person.name }}</option>
+        {% endfor %}
+      </select>
+
+      <button class="nx-btn nx-btn--ghost nx-btn--sm" type="submit">Apply</button>
+      {% if q or assignee_filter %}
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% query_replace q="" assignee="" page=1 %}">Reset</a>
+      {% endif %}
+      <div class="nx-toolbar__right">
+        <span class="nx-toolbar__count">{{ page_obj.paginator.count }} task{{ page_obj.paginator.count|pluralize }}</span>
+      </div>
+    </form>
+
+    <hr class="nx-divider">
+
+    {% if page_obj.object_list %}
+    <div class="nx-table-wrap">
+      <table class="nx-table">
+        <thead>
+          <tr>
+            <th scope="col">Contact</th>
+            <th scope="col">Task</th>
+            <th scope="col">Due</th>
+            <th scope="col">Assigned to</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in page_obj.object_list %}
+          <tr>
+            <td>
+              <div class="nx-cell">
+                <span class="nx-avatar nx-avatar--sm">{{ task.contact.initials }}</span>
+                <div>
+                  <a class="nx-cell__main" href="{% url 'contacts:detail' task.contact_id %}">{{ task.contact.name }}</a>
+                  <div class="nx-cell__sub">{{ task.contact.company|default:"—" }}</div>
+                </div>
+              </div>
+            </td>
+            <td><div class="nx-note-cell">{{ task.notes|truncatechars:88 }}</div></td>
+            <td>
+              <div class="nx-cell__main" style="font-size:12.5px">{% nx_date task.due_date %}</div>
+              <div class="nx-cell__sub" {% if task.is_overdue %}style="color:var(--danger)"{% endif %}>{{ task.due_label }} · {% nx_time task.due_date %}</div>
+            </td>
+            <td>{{ task.assigned_to.name }}</td>
+            <td><span class="nx-pill nx-pill--{{ task.display_status }}">{{ task.display_status_label }}</span></td>
+            <td class="nx-td-actions">
+              <div class="nx-actions">
+                {% if current_user|has_perm:"followups.edit" %}
+                  {% if task.status == "pending" %}
+                    <form method="post" action="{% url 'followups:complete' task.followup_id %}" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="nx-icon-btn" title="Mark complete" data-bs-toggle="tooltip" aria-label="Mark follow-up complete">
+                        <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg>
+                      </button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{% url 'followups:reopen' task.followup_id %}" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="nx-icon-btn" title="Reopen task" data-bs-toggle="tooltip" aria-label="Reopen follow-up">
+                        <svg><use href="{% static 'img/icons.svg' %}#i-refresh"></use></svg>
+                      </button>
+                    </form>
+                  {% endif %}
+                  <a class="nx-icon-btn" href="{% url 'followups:edit' task.followup_id %}" title="Edit task" data-bs-toggle="tooltip" aria-label="Edit follow-up">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                  </a>
+                  <button type="button" class="nx-icon-btn nx-icon-btn--danger" title="Delete task" data-bs-toggle="tooltip"
+                          data-confirm-url="{% url 'followups:delete' task.followup_id %}"
+                          data-confirm-title="Delete this follow-up?"
+                          data-confirm-text="The task for {{ task.contact.name }} will be removed. This cannot be undone."
+                          data-confirm-action="Delete follow-up" aria-label="Delete follow-up">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% include "partials/pagination.html" %}
+
+    {% else %}
+    <div class="nx-empty">
+      <span class="nx-empty__icon">
+        <svg><use href="{% static 'img/icons.svg' %}#{% if active_tab == 'overdue' %}i-check{% else %}i-calendar{% endif %}"></use></svg>
+      </span>
+      <div class="nx-empty__title">
+        {% if active_tab == "overdue" %}Nothing overdue — nicely done
+        {% elif active_tab == "completed" %}No completed tasks yet
+        {% elif active_tab == "all" %}No follow-ups yet
+        {% else %}No upcoming follow-ups{% endif %}
+      </div>
+      <p class="nx-empty__text">
+        {% if active_tab == "overdue" %}Tasks appear here automatically once their due date passes while still pending.
+        {% else %}Create a follow-up to keep the next conversation on the calendar.{% endif %}
+      </p>
+      {% if current_user|has_perm:"followups.add" %}
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'followups:create' %}">New follow-up</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <p class="nx-help">
+    Overdue status is calculated automatically from the due date and completion state — no manual changes needed.
+  </p>
+</div>
+{% endblock %}

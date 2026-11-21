@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start">
+
+    <section class="nx-card nx-card--flush">
+      <div class="nx-card__head" style="padding:22px 22px 0;margin-bottom:14px">
+        <div>
+          <h2 class="nx-card__title">Contact categories</h2>
+          <p class="nx-card__sub">{{ categories|length }} categories organising {{ total_contacts }} contacts.</p>
+        </div>
+      </div>
+
+      {% if categories %}
+      <div class="nx-table-wrap">
+        <table class="nx-table">
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col">Description</th>
+              <th scope="col">Contacts</th>
+              <th scope="col" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for category in categories %}
+            <tr>
+              <td>
+                <div class="nx-cell">
+                  <span class="nx-avatar nx-avatar--sm"><svg style="width:15px;height:15px"><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg></span>
+                  <div>
+                    <div class="nx-cell__main">{{ category.category_name }}</div>
+                    <div class="nx-cell__sub">Added {% nx_date category.created_at %}</div>
+                  </div>
+                </div>
+              </td>
+              <td><div class="nx-note-cell">{{ category.description|default:"—" }}</div></td>
+              <td>
+                <span class="nx-badge nx-badge--{{ category.category_name|category_tone }}">{{ category.total }} contact{{ category.total|pluralize }}</span>
+              </td>
+              <td class="nx-td-actions">
+                <div class="nx-actions">
+                  <a class="nx-icon-btn" href="{% url 'contacts:list' %}?category={{ category.category_id }}" title="View contacts" data-bs-toggle="tooltip" aria-label="View contacts in {{ category.category_name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+                  </a>
+                  {% if current_user|has_perm:"categories.manage" %}
+                  <a class="nx-icon-btn" href="{% url 'contacts:category_edit' category.category_id %}" title="Edit category" data-bs-toggle="tooltip" aria-label="Edit {{ category.category_name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                  </a>
+                  <button type="button" class="nx-icon-btn nx-icon-btn--danger" title="Delete category" data-bs-toggle="tooltip"
+                          data-confirm-url="{% url 'contacts:category_delete' category.category_id %}"
+                          data-confirm-title="Delete {{ category.category_name }}?"
+                          data-confirm-text="Categories can only be deleted when no contacts use them. Reassign those contacts first."
+                          data-confirm-action="Delete category" aria-label="Delete {{ category.category_name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="nx-empty">
+        <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg></span>
+        <div class="nx-empty__title">No categories yet</div>
+        <p class="nx-empty__text">Create a category to start organising your contacts.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <aside class="nx-stack">
+      {% if current_user|has_perm:"categories.manage" %}
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">New category</h2>
+            <p class="nx-card__sub">Group contacts for cleaner reporting.</p>
+          </div>
+        </div>
+        <form method="post" action="{% url 'contacts:category_create' %}" class="nx-form">
+          {% csrf_token %}
+          {% include "partials/field.html" with field=form.category_name %}
+          {% include "partials/field.html" with field=form.description %}
+          <div class="nx-form-actions">
+            <button type="submit" class="nx-btn nx-btn--primary nx-btn--block">
+              <svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg> Create category
+            </button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">How categories are used</h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Dashboard distribution chart</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Directory filtering</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Category-wise reports</span></div>
+        </div>
+        <p class="nx-help" style="margin-top:12px">A category in use cannot be deleted — NEXORA protects your records from becoming uncategorised.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

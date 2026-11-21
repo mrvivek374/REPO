@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block topbar %}
+<header class="nx-topbar nx-topbar--contacts" aria-label="Page header">
+  <div class="nx-topbar__left">
+    <button type="button" class="nx-mobile-toggle" data-sidebar-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+      <svg><use href="{% static 'img/icons.svg' %}#i-menu"></use></svg>
+    </button>
+    <div style="min-width:0">
+      <nav class="nx-topbar__crumbs" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard' %}">NEXORA</a>
+        <span class="sep">/</span>
+        <span>Contacts</span>
+      </nav>
+      <h1 class="nx-topbar__title">{{ page_title }}</h1>
+    </div>
+  </div>
+
+  <div class="nx-topbar__actions">
+    <!-- Global search -->
+    <form class="nx-search nx-search--top" method="get" action="{% url 'contacts:list' %}" role="search" aria-label="Global search">
+      <svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+      <label class="nx-sr-only" for="topbar-search">Global search</label>
+      <input class="nx-input" id="topbar-search" type="search" name="q" placeholder="Global search…" value="{{ q|default:'' }}">
+      {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
+      {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    </form>
+
+    <!-- Notifications -->
+    <div class="dropdown">
+      <button class="nx-header-icon-btn" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="nx-notification-dot" aria-hidden="true"></span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-end nx-dropdown--neumorphic p-3" aria-labelledby="notificationsDropdown" style="min-width: 270px;">
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+          <strong style="font-size: 13px; color: var(--charcoal);">Notifications</strong>
+          <span class="badge" style="background: var(--sage); color: var(--forest); font-size: 11px;">Active</span>
+        </div>
+        <div class="py-1" style="font-size: 12.5px; color: var(--charcoal);">
+          <div style="font-weight: 600;">Directory synced</div>
+          <small class="text-muted">{{ total_contacts }} contacts indexed &amp; up-to-date</small>
+        </div>
+        <div class="py-1 mt-1 border-top" style="font-size: 12.5px; color: var(--charcoal);">
+          <div style="font-weight: 600;">{{ active_total }} active relationships</div>
+          <small class="text-muted">Interactions within the last 90 days</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add New Contact button -->
+    {% if current_user|has_perm:"contacts.add" %}
+    <a href="{% url 'contacts:create' %}" class="nx-btn nx-btn--add-contact" aria-label="Add New Contact">
+      <svg style="width:16px;height:16px;"><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg>
+      <span>Add New Contact</span>
+    </a>
+    {% endif %}
+
+    <!-- User profile avatar -->
+    <a href="{% url 'accounts:profile' %}" class="nx-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--forest);color:var(--sage);font-size:14px;font-weight:700;" aria-label="My profile" title="{{ current_user.name }}">
+      {{ current_user.initials }}
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="nx-directory-page">
+
+  <!-- 4. CONTACT STATISTICS (Compact Neumorphic 3-card section) -->
+  <section class="nx-stats-compact-grid" aria-label="Contact statistics">
+    <article class="nx-stat-compact">
+      <div class="nx-stat-compact__icon nx-stat-compact__icon--forest" aria-hidden="true">
+        <svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg>
+      </div>
+      <div class="nx-stat-compact__meta">
+        <span class="nx-stat-compact__value">{{ total_contacts }}</span>
+        <span class="nx-stat-compact__label">Total Contacts</span>
+      </div>
+    </article>
+
+    <article class="nx-stat-compact">
+      <div class="nx-stat-compact__icon nx-stat-compact__icon--sage" aria-hidden="true">
+        <svg><use href="{% static 'img/icons.svg' %}#i-users"></use></svg>
+      </div>
+      <div class="nx-stat-compact__meta">
+        <span class="nx-stat-compact__value">{{ active_total }}</span>
+        <span class="nx-stat-compact__label">Active Contacts</span>
+      </div>
+    </article>
+
+    <article class="nx-stat-compact">
+      <div class="nx-stat-compact__icon nx-stat-compact__icon--warm" aria-hidden="true">
+        <svg><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg>
+      </div>
+      <div class="nx-stat-compact__meta">
+        <span class="nx-stat-compact__value">{{ total_categories|default:categories|length }}</span>
+        <span class="nx-stat-compact__label">Total Categories</span>
+      </div>
+    </article>
+  </section>
+
+  <!-- 5. SEARCH AND FILTER SECTION (Recessed Neumorphic Toolbar) -->
+  <section class="nx-toolbar-card" aria-label="Filter contacts">
+    <form method="get" class="nx-toolbar-form" role="search" id="contactFilterForm">
+      <!-- Search Input with Field Scope Dropdown -->
+      <div class="nx-search-composite">
+        <svg class="nx-search-composite__icon" aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+        <label class="nx-sr-only" for="contact-search-input">Search contacts</label>
+        <input class="nx-search-composite__input" id="contact-search-input" type="search" name="q" value="{{ q }}" placeholder="Search by name, company, email or phone…">
+        <label class="nx-sr-only" for="contact-search-field">Search filter field</label>
+        <select class="nx-search-composite__scope" id="contact-search-field" name="field" title="Select field to search">
+          <option value="all" {% if search_field == "all" or not search_field %}selected{% endif %}>All Fields</option>
+          <option value="name" {% if search_field == "name" %}selected{% endif %}>By Name</option>
+          <option value="company" {% if search_field == "company" %}selected{% endif %}>By Company</option>
+          <option value="email" {% if search_field == "email" %}selected{% endif %}>By Email</option>
+          <option value="phone" {% if search_field == "phone" %}selected{% endif %}>By Phone</option>
+        </select>
+      </div>
+
+      <!-- Category Filter -->
+      <div>
+        <label class="nx-sr-only" for="filter-category">Category Filter</label>
+        <select class="nx-filter-select" id="filter-category" name="category" data-autosubmit title="Filter by category">
+          <option value="">All Categories</option>
+          {% for category in categories %}
+            <option value="{{ category.category_id }}" {% if category_filter == category.category_id|stringformat:"s" %}selected{% endif %}>
+              {{ category.category_name }} ({{ category.total }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Sorting Dropdown -->
+      <div>
+        <label class="nx-sr-only" for="filter-sort">Sort by</label>
+        <select class="nx-filter-select" id="filter-sort" name="sort" data-autosubmit title="Sort contacts">
+          {% for key, option in sort_options.items %}
+            <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ option.0 }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Hidden view mode preserving state -->
+      <input type="hidden" name="view" value="{{ view_mode|default:'grid' }}" id="viewModeInput">
+
+      <!-- Action buttons & View toggles -->
+      <div class="nx-toolbar-actions">
+        {% if q or category_filter or search_field != "all" %}
+          <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'contacts:list' %}">Reset</a>
+        {% endif %}
+        <button class="nx-btn nx-btn--ghost nx-btn--sm" type="submit">Apply</button>
+
+        <!-- View mode switcher: Grid View (Active) & Table View -->
+        <div class="nx-view-toggle" role="group" aria-label="Layout view mode">
+          <a href="{% query_replace view='grid' %}" class="nx-view-toggle__btn {% if view_mode != 'table' %}is-active{% endif %}" title="Grid View" aria-label="Grid View" aria-pressed="{% if view_mode != 'table' %}true{% else %}false{% endif %}">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            </svg>
+          </a>
+          <a href="{% query_replace view='table' %}" class="nx-view-toggle__btn {% if view_mode == 'table' %}is-active{% endif %}" title="Table View" aria-label="Table View" aria-pressed="{% if view_mode == 'table' %}true{% else %}false{% endif %}">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <rect x="3" y="4" width="18" height="3" rx="1"></rect>
+              <rect x="3" y="10.5" width="18" height="3" rx="1"></rect>
+              <rect x="3" y="17" width="18" height="3" rx="1"></rect>
+            </svg>
+          </a>
+        </div>
+
+        <span class="nx-filter-count-badge">{{ filtered_total }} result{{ filtered_total|pluralize }}</span>
+      </div>
+    </form>
+  </section>
+
+  <!-- 6. CONTACT CARDS GRID OR TABLE VIEW -->
+  {% if page_obj.object_list %}
+
+    {% if view_mode == "table" %}
+    <!-- Table View Fallback -->
+    <section class="nx-card">
+      <div class="nx-table-wrap">
+        <table class="nx-table">
+          <caption class="nx-sr-only">Contact directory</caption>
+          <thead>
+            <tr>
+              <th scope="col">Contact</th>
+              <th scope="col">Category</th>
+              <th scope="col">Contact details</th>
+              <th scope="col">Activity</th>
+              <th scope="col">Added</th>
+              <th scope="col" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for contact in page_obj.object_list %}
+            <tr>
+              <td>
+                <div class="nx-cell">
+                  <span class="nx-avatar">{{ contact.initials }}</span>
+                  <div style="min-width:0">
+                    <a class="nx-cell__main" href="{% url 'contacts:detail' contact.contact_id %}">{{ contact.name }}</a>
+                    <div class="nx-cell__sub">
+                      {{ contact.job_title|default:"—" }}{% if contact.company %} · {{ contact.company }}{% endif %}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="nx-badge nx-badge--{{ contact.category.category_name|category_tone }}">{{ contact.category.category_name }}</span></td>
+              <td>
+                <div class="nx-cell__sub" style="color:var(--charcoal)">{{ contact.phone }}</div>
+                <div class="nx-cell__sub">{{ contact.email }}</div>
+              </td>
+              <td>
+                <div class="nx-cell__main" style="font-size:12.5px">{{ contact.interaction_total }} interaction{{ contact.interaction_total|pluralize }}</div>
+                <div class="nx-cell__sub">
+                  {% if contact.last_contact %}Last {% nx_date contact.last_contact %}{% else %}No interactions yet{% endif %}
+                </div>
+              </td>
+              <td>{% nx_date contact.created_at %}</td>
+              <td class="nx-td-actions">
+                <div class="nx-actions">
+                  <a class="nx-icon-btn" href="{% url 'contacts:detail' contact.contact_id %}" title="View profile" data-bs-toggle="tooltip" aria-label="View {{ contact.name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+                  </a>
+                  {% if current_user|has_perm:"contacts.edit" %}
+                  <a class="nx-icon-btn" href="{% url 'contacts:edit' contact.contact_id %}" title="Edit contact" data-bs-toggle="tooltip" aria-label="Edit {{ contact.name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                  </a>
+                  {% endif %}
+                  {% if current_user|has_perm:"contacts.delete" %}
+                  <button type="button" class="nx-icon-btn nx-icon-btn--danger" title="Delete contact" data-bs-toggle="tooltip"
+                          data-confirm-url="{% url 'contacts:delete' contact.contact_id %}"
+                          data-confirm-title="Delete {{ contact.name }}?"
+                          data-confirm-text="This permanently removes the contact, their interaction history and follow-ups. This cannot be undone."
+                          data-confirm-action="Delete contact" aria-label="Delete {{ contact.name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {% else %}
+    <!-- Modern 4-Column Contact Card Grid (Reference Image 1 Layout) -->
+    <section class="nx-contact-grid" aria-label="Contact card directory">
+      {% for contact in page_obj.object_list %}
+      <article class="nx-contact-card" aria-labelledby="contact-name-{{ contact.contact_id }}">
+
+        <!-- Top Section: 3-Dot Action Menu + Circular Avatar with Activity Dot -->
+        <div class="nx-contact-card__top">
+          <!-- Three-dot action menu -->
+          <div class="dropdown nx-contact-card__menu">
+            <button class="nx-card-menu-btn" type="button" id="menu-{{ contact.contact_id }}" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for {{ contact.name }}" title="Actions">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+              </svg>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end nx-dropdown--neumorphic" aria-labelledby="menu-{{ contact.contact_id }}">
+              <li>
+                <a class="dropdown-item" href="{% url 'contacts:detail' contact.contact_id %}">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+                  <span>View Contact</span>
+                </a>
+              </li>
+              {% if current_user|has_perm:"contacts.edit" %}
+              <li>
+                <a class="dropdown-item" href="{% url 'contacts:edit' contact.contact_id %}">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                  <span>Edit Contact</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if current_user|has_perm:"contacts.delete" %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button type="button" class="dropdown-item dropdown-item--danger"
+                        data-confirm-url="{% url 'contacts:delete' contact.contact_id %}"
+                        data-confirm-title="Delete {{ contact.name }}?"
+                        data-confirm-text="This permanently removes {{ contact.name }}, their interaction history and follow-ups. This cannot be undone."
+                        data-confirm-action="Delete contact">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                  <span>Delete Contact</span>
+                </button>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+
+          <!-- Circular Profile Avatar with status indicator -->
+          <div class="nx-contact-card__avatar-wrap">
+            <div class="nx-contact-card__avatar" aria-hidden="true">
+              {{ contact.initials }}
+            </div>
+            {% if contact.is_active %}
+            <span class="nx-contact-card__status" title="Active contact (recent interaction)" data-bs-toggle="tooltip" aria-label="Active contact"></span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Middle Section: Name, Job Title, Company, Category badge -->
+        <div class="nx-contact-card__middle">
+          <h2 class="nx-contact-card__name" id="contact-name-{{ contact.contact_id }}">
+            <a href="{% url 'contacts:detail' contact.contact_id %}" class="nx-card-link">{{ contact.name }}</a>
+          </h2>
+          <div class="nx-contact-card__role">
+            {{ contact.job_title|default:"Contact" }}
+          </div>
+          <div class="nx-contact-card__company">
+            <svg class="nx-contact-card__company-icon" aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-building"></use></svg>
+            <span>{{ contact.company|default:"Independent" }}</span>
+          </div>
+          <div class="nx-contact-card__badge-wrap">
+            <span class="nx-badge nx-badge--{{ contact.category.category_name|category_tone }}">
+              {{ contact.category.category_name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Bottom Section: Three Circular Action Buttons -->
+        <div class="nx-contact-card__bottom">
+          <!-- 1. Phone Icon — Call contact -->
+          <a href="tel:{{ contact.phone }}" class="nx-card-btn" title="Call {{ contact.phone }}" data-bs-toggle="tooltip" aria-label="Call {{ contact.name }} at {{ contact.phone }}">
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-phone"></use></svg>
+          </a>
+          <!-- 2. Email Icon — Open email -->
+          <a href="mailto:{{ contact.email }}" class="nx-card-btn" title="Email {{ contact.email }}" data-bs-toggle="tooltip" aria-label="Email {{ contact.name }} at {{ contact.email }}">
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-mail"></use></svg>
+          </a>
+          <!-- 3. View Icon — Open detailed profile -->
+          <a href="{% url 'contacts:detail' contact.contact_id %}" class="nx-card-btn" title="View {{ contact.name }}'s profile" data-bs-toggle="tooltip" aria-label="View {{ contact.name }}'s detailed profile">
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+          </a>
+        </div>
+
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- 9. PAGINATION SECTION -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="nx-contact-pagination" aria-label="Contact directory pagination">
+      <div class="nx-contact-pagination__info">
+        Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of <strong>{{ page_obj.paginator.count }}</strong> contacts
+      </div>
+      <div class="nx-contact-pagination__controls">
+        {% if page_obj.has_previous %}
+          <a class="nx-page-nav-btn" href="{% query_replace page=page_obj.previous_page_number %}" aria-label="Previous page">
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-arrow-left"></use></svg>
+            <span>Previous</span>
+          </a>
+        {% else %}
+          <span class="nx-page-nav-btn is-disabled" aria-hidden="true">
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-arrow-left"></use></svg>
+            <span>Previous</span>
+          </span>
+        {% endif %}
+
+        <div class="nx-page-numbers">
+          {% for num in page_obj|elided_pages %}
+            {% if num == page_obj.paginator.ELLIPSIS %}
+              <span class="nx-page-num is-ellipsis" aria-hidden="true">…</span>
+            {% elif num == page_obj.number %}
+              <span class="nx-page-num is-active" aria-current="page">{{ num }}</span>
+            {% else %}
+              <a class="nx-page-num" href="{% query_replace page=num %}">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% if page_obj.has_next %}
+          <a class="nx-page-nav-btn" href="{% query_replace page=page_obj.next_page_number %}" aria-label="Next page">
+            <span>Next</span>
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+          </a>
+        {% else %}
+          <span class="nx-page-nav-btn is-disabled" aria-hidden="true">
+            <span>Next</span>
+            <svg aria-hidden="true"><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+          </span>
+        {% endif %}
+      </div>
+    </nav>
+    {% elif page_obj.paginator.count %}
+    <div class="nx-contact-pagination">
+      <div class="nx-contact-pagination__info">
+        Showing all <strong>{{ page_obj.paginator.count }}</strong> contact{{ page_obj.paginator.count|pluralize }}
+      </div>
+    </div>
+    {% endif %}
+
+  {% else %}
+  <!-- Empty State -->
+  <section class="nx-card text-center py-5" aria-label="No contacts found">
+    <div class="nx-empty">
+      <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg></span>
+      <div class="nx-empty__title" style="color:var(--charcoal);margin-top:14px;font-size:18px;">
+        {% if q or category_filter %}No contacts match your search or filter{% else %}Your directory is currently empty{% endif %}
+      </div>
+      <p class="nx-empty__text" style="color:var(--muted);max-width:460px;margin:8px auto 20px;">
+        {% if q or category_filter %}
+          Try adjusting your search terms or clear the filters to see all contacts in your directory.
+        {% else %}
+          Add your first business contact to start building smart relationships, tracking interactions, and setting follow-ups.
+        {% endif %}
+      </p>
+      {% if q or category_filter %}
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'contacts:list' %}">Clear all filters</a>
+      {% elif current_user|has_perm:"contacts.add" %}
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'contacts:create' %}">Add New Contact</a>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

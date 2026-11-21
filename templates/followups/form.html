@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start">
+
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">{{ page_title }}</h2>
+          <p class="nx-card__sub">{% if mode == "edit" %}Update the task, owner or due date.{% else %}Give the next step a clear owner and deadline.{% endif %}</p>
+        </div>
+        <a class="nx-card__link" href="{% url 'followups:list' %}">Cancel</a>
+      </div>
+
+      {% if followup %}
+      <div class="nx-alert nx-alert--{% if followup.display_status == 'overdue' %}error{% elif followup.display_status == 'completed' %}success{% else %}info{% endif %}" style="margin-bottom:18px">
+        <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-clock"></use></svg></span>
+        <div class="nx-alert__body">
+          Current status: <strong>{{ followup.display_status_label }}</strong> · {{ followup.due_label }}
+          {% if followup.status == "pending" %}
+            <form method="post" action="{% url 'followups:complete' followup.followup_id %}" style="display:inline;margin-left:8px">
+              {% csrf_token %}
+              <button type="submit" class="nx-link" style="background:none;border:0;padding:0">Mark complete</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="nx-alert nx-alert--error">
+            <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+            <div class="nx-alert__body">{{ form.non_field_errors|join:" " }}</div>
+          </div>
+        {% endif %}
+
+        <div class="nx-grid nx-grid--form">
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.contact %}</div>
+          {% include "partials/field.html" with field=form.assigned_to %}
+          {% include "partials/field.html" with field=form.due_date %}
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.notes %}</div>
+        </div>
+
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">
+            <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg>
+            {% if mode == "edit" %}Save changes{% else %}Create follow-up{% endif %}
+          </button>
+          <a class="nx-btn nx-btn--ghost" href="{% url 'followups:list' %}">Cancel</a>
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Scheduling rules</h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>A new task cannot be due in the past.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Pending tasks past their deadline become overdue automatically.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Staff manage the tasks assigned to them.</span></div>
+        </div>
+      </section>
+
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Status flow</h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-clock"></use></svg><span><strong>Pending</strong> — scheduled and waiting.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg><span><strong>Overdue</strong> — pending past the due date.</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span><strong>Completed</strong> — closed with a timestamp.</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

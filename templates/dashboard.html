@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}Dashboard · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <section class="nx-hero">
+    <svg class="nx-hero__pattern" viewBox="0 0 320 320" fill="none" aria-hidden="true">
+      <circle cx="160" cy="60" r="16" stroke="currentColor" stroke-width="2"/>
+      <circle cx="52" cy="246" r="16" stroke="currentColor" stroke-width="2"/>
+      <circle cx="268" cy="246" r="16" stroke="currentColor" stroke-width="2"/>
+      <path d="M152 76 66 232M168 76l86 156M64 252h192" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
+    <div class="nx-hero__inner">
+      <div>
+        <span class="nx-hero__eyebrow">{{ today|date:"l, d F Y" }}</span>
+        <h2 class="nx-hero__title">{{ greeting }}, {{ current_user.get_short_name }}.</h2>
+        <p class="nx-hero__text">
+          {% if stats.overdue_followups %}
+            {{ stats.overdue_followups }} follow-up{{ stats.overdue_followups|pluralize }} need{{ stats.overdue_followups|pluralize:"s," }} your attention and {{ stats.upcoming_followups }} more fall{{ stats.upcoming_followups|pluralize:"s," }} in the next seven days.
+          {% elif stats.upcoming_followups %}
+            {{ stats.upcoming_followups }} follow-up{{ stats.upcoming_followups|pluralize }} scheduled in the next seven days. Your pipeline is moving.
+          {% else %}
+            Nothing overdue. Add a contact or schedule a follow-up to keep the pipeline warm.
+          {% endif %}
+        </p>
+        <div class="nx-hero__actions">
+          {% if current_user|has_perm:"contacts.add" %}
+            <a class="nx-btn nx-btn--sage" href="{% url 'contacts:create' %}">
+              <svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg> Add contact
+            </a>
+          {% endif %}
+          {% if current_user|has_perm:"followups.add" %}
+            <a class="nx-btn nx-btn--hero" href="{% url 'followups:create' %}">
+              <svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg> Schedule follow-up
+            </a>
+          {% endif %}
+          {% if current_user|has_perm:"reports.view" %}
+            <a class="nx-btn nx-btn--hero" href="{% url 'reports:reports' %}">
+              <svg><use href="{% static 'img/icons.svg' %}#i-chart"></use></svg> View reports
+            </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="nx-hero__chips">
+        <div class="nx-chip">
+          <div class="nx-chip__value">{{ stats.total_interactions }}</div>
+          <div class="nx-chip__label">Interactions logged</div>
+        </div>
+        <div class="nx-chip">
+          <div class="nx-chip__value">{{ stats.interactions_this_month }}</div>
+          <div class="nx-chip__label">This month</div>
+        </div>
+        <div class="nx-chip">
+          <div class="nx-chip__value">{{ stats.completion_rate }}%</div>
+          <div class="nx-chip__label">Follow-up completion</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="nx-grid nx-grid--stats">
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--forest">
+          <svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg>
+        </span>
+        <span class="nx-trend nx-trend--{% if stats.month_growth and stats.month_growth < 0 %}down{% elif stats.month_growth %}up{% else %}flat{% endif %}">
+          {% if stats.month_growth is None %}—{% elif stats.month_growth > 0 %}+{% endif %}{{ stats.month_growth|default:"0" }}%
+        </span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ stats.total_contacts }}</div>
+        <div class="nx-stat__label">Total contacts</div>
+      </div>
+      <div class="nx-help">{{ stats.this_month_contacts }} added this month</div>
+    </article>
+
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--sage">
+          <svg><use href="{% static 'img/icons.svg' %}#i-users"></use></svg>
+        </span>
+        <span class="nx-trend nx-trend--flat">{{ stats.active_contacts|percent:stats.total_contacts }}%</span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ stats.active_contacts }}</div>
+        <div class="nx-stat__label">Active contacts</div>
+      </div>
+      <div class="nx-help">Engaged in the last 90 days</div>
+    </article>
+
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon">
+          <svg><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg>
+        </span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ stats.total_categories }}</div>
+        <div class="nx-stat__label">Total categories</div>
+      </div>
+      <div class="nx-help">Clients, suppliers, partners &amp; leads</div>
+    </article>
+
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--amber">
+          <svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg>
+        </span>
+        <span class="nx-trend nx-trend--flat">7 days</span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ stats.upcoming_followups }}</div>
+        <div class="nx-stat__label">Upcoming follow-ups</div>
+      </div>
+      <div class="nx-help">{{ stats.pending_followups }} pending in total</div>
+    </article>
+
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--danger">
+          <svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg>
+        </span>
+        {% if stats.overdue_followups %}<span class="nx-trend nx-trend--down">Action needed</span>{% endif %}
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ stats.overdue_followups }}</div>
+        <div class="nx-stat__label">Overdue follow-ups</div>
+      </div>
+      <div class="nx-help"><a class="nx-link" href="{% url 'followups:list' %}?tab=overdue">Review overdue tasks</a></div>
+    </article>
+  </div>
+
+  <div class="nx-grid nx-grid--main">
+    <div class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Monthly contact growth</h2>
+            <p class="nx-card__sub">New directory records over the last six months.</p>
+          </div>
+          <a class="nx-card__link" href="{% url 'contacts:list' %}?sort=recent">
+            Directory <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+          </a>
+        </div>
+        <div class="nx-chart"><canvas id="growthChart" role="img" aria-label="Bar chart of monthly contact growth"></canvas></div>
+        <div class="nx-legend" id="growthLegend"></div>
+      </section>
+
+      <section class="nx-card nx-card--flush">
+        <div class="nx-card__head" style="padding:22px 22px 0;margin-bottom:14px">
+          <div>
+            <h2 class="nx-card__title">Recently added contacts</h2>
+            <p class="nx-card__sub">The newest relationships in your directory.</p>
+          </div>
+          <a class="nx-card__link" href="{% url 'contacts:list' %}?sort=recent">
+            View all <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+          </a>
+        </div>
+        {% if recent_contacts %}
+        <div class="nx-table-wrap">
+          <table class="nx-table nx-table--compact">
+            <thead>
+              <tr>
+                <th scope="col">Contact</th>
+                <th scope="col">Category</th>
+                <th scope="col">Added</th>
+                <th scope="col" class="text-end">Profile</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for contact in recent_contacts %}
+              <tr>
+                <td>
+                  <div class="nx-cell">
+                    <span class="nx-avatar nx-avatar--sm">{{ contact.initials }}</span>
+                    <div style="min-width:0">
+                      <div class="nx-cell__main"><a class="nx-cell__main" href="{% url 'contacts:detail' contact.contact_id %}">{{ contact.name }}</a></div>
+                      <div class="nx-cell__sub">{{ contact.company }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="nx-badge nx-badge--{{ contact.category.category_name|category_tone }}">{{ contact.category.category_name }}</span></td>
+                <td>{% nx_date contact.created_at %}</td>
+                <td class="text-end">
+                  <a class="nx-icon-btn" href="{% url 'contacts:detail' contact.contact_id %}" aria-label="Open {{ contact.name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="nx-empty">
+          <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg></span>
+          <div class="nx-empty__title">No contacts yet</div>
+          <p class="nx-empty__text">Add your first contact to start building the directory.</p>
+          {% if current_user|has_perm:"contacts.add" %}<a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'contacts:create' %}">Add contact</a>{% endif %}
+        </div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Follow-up status</h2>
+            <p class="nx-card__sub">Where every task currently sits.</p>
+          </div>
+        </div>
+        <div class="nx-chart nx-chart--sm"><canvas id="statusChart" role="img" aria-label="Doughnut chart of follow-up status"></canvas></div>
+        <div class="nx-kpi-row" style="margin-top:16px">
+          <div class="nx-mini-stat">
+            <div class="nx-mini-stat__value">{{ stats.followup_summary.pending }}</div>
+            <div class="nx-mini-stat__label">Pending</div>
+          </div>
+          <div class="nx-mini-stat">
+            <div class="nx-mini-stat__value">{{ stats.overdue_followups }}</div>
+            <div class="nx-mini-stat__label">Overdue</div>
+          </div>
+          <div class="nx-mini-stat">
+            <div class="nx-mini-stat__value">{{ stats.completed_followups }}</div>
+            <div class="nx-mini-stat__label">Completed</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Recent activity</h2>
+            <p class="nx-card__sub">Latest interactions and closed tasks.</p>
+          </div>
+          <a class="nx-card__link" href="{% url 'interactions:list' %}">
+            Timeline <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+          </a>
+        </div>
+        {% if activities %}
+        <div class="nx-timeline">
+          {% for activity in activities %}
+          <a class="nx-timeline__item" href="{{ activity.url }}">
+            <span class="nx-timeline__icon nx-timeline__icon--{{ activity.tone }}">
+              <svg><use href="{% static 'img/icons.svg' %}#i-{{ activity.icon }}"></use></svg>
+            </span>
+            <div class="nx-timeline__body">
+              <div class="nx-timeline__title">{{ activity.title }}</div>
+              <div class="nx-timeline__meta">
+                <span>{{ activity.meta }}</span>
+                <span>·</span>
+                <span>{{ activity.actor }}</span>
+                <span>·</span>
+                <span>{% nx_datetime activity.when %}</span>
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="nx-empty nx-empty--sm">
+          <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg></span>
+          <div class="nx-empty__title">No activity recorded</div>
+          <p class="nx-empty__text">Interactions you log will appear here.</p>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  <div class="nx-grid nx-grid--equal">
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Contact category distribution</h2>
+          <p class="nx-card__sub">How the directory splits across categories.</p>
+        </div>
+        {% if current_user|has_perm:"categories.view" %}
+        <a class="nx-card__link" href="{% url 'contacts:category_list' %}">
+          Manage <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+        </a>
+        {% endif %}
+      </div>
+      <div class="nx-chart nx-chart--sm"><canvas id="categoryChart" role="img" aria-label="Doughnut chart of contact categories"></canvas></div>
+      <div class="nx-legend" id="categoryLegend"></div>
+    </section>
+
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">My follow-up focus</h2>
+          <p class="nx-card__sub">Tasks assigned to you, earliest first.</p>
+        </div>
+        <a class="nx-card__link" href="{% url 'followups:list' %}">
+          All tasks <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+        </a>
+      </div>
+      <div class="nx-kpi-row" style="margin-bottom:14px">
+        <div class="nx-mini-stat">
+          <div class="nx-mini-stat__value">{{ my_open_followups }}</div>
+          <div class="nx-mini-stat__label">Open for you</div>
+        </div>
+        <div class="nx-mini-stat">
+          <div class="nx-mini-stat__value">{{ my_overdue_followups }}</div>
+          <div class="nx-mini-stat__label">Overdue</div>
+        </div>
+        <div class="nx-mini-stat">
+          <div class="nx-mini-stat__value">{{ stats.followup_summary.completion_rate }}%</div>
+          <div class="nx-mini-stat__label">Team completion</div>
+        </div>
+      </div>
+      {% if my_open_list %}
+      <div class="nx-quick-list">
+        {% for task in my_open_list %}
+        <div class="nx-quick-row">
+          <span class="nx-avatar nx-avatar--sm {% if task.is_overdue %}nx-avatar--danger{% else %}nx-avatar--muted{% endif %}">
+            <svg style="width:15px;height:15px"><use href="{% static 'img/icons.svg' %}#i-clock"></use></svg>
+          </span>
+          <div class="nx-quick-row__main">
+            <div class="nx-cell__main">{{ task.contact.name }}</div>
+            <div class="nx-cell__sub">{{ task.due_label }} · {{ task.contact.company|default:"—" }}</div>
+          </div>
+          <span class="nx-pill nx-pill--{{ task.display_status }}">{{ task.display_status_label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="nx-empty nx-empty--sm">
+        <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span>
+        <div class="nx-empty__title">You’re all caught up</div>
+        <p class="nx-empty__text">No open follow-ups are assigned to you right now.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ growth_chart|json_script:"growth-data" }}
+{{ category_chart|json_script:"category-data" }}
+{{ status_chart|json_script:"status-data" }}
+<script>
+(function () {
+  var palette = NexoraCharts.palette;
+  var grid = NexoraCharts.grid;
+
+  // Monthly growth --------------------------------------------------------
+  var growth = NexoraCharts.read("growth-data");
+  if (growth && growth.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("growthChart"), {
+      type: "bar",
+      data: {
+        labels: growth.short_labels,
+        datasets: [{
+          label: "Contacts added",
+          data: growth.values,
+          backgroundColor: "#003B35",
+          hoverBackgroundColor: "#26866C",
+          borderRadius: 8,
+          maxBarThickness: 38
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 11.5 } } },
+          y: { beginAtZero: true, grid: { color: grid, drawTicks: false }, border: { display: false }, ticks: { precision: 0, padding: 8 } }
+        }
+      }
+    });
+    document.getElementById("growthLegend").innerHTML =
+      '<span class="nx-legend__item"><span class="nx-dot" style="background:#003B35"></span>Contacts added per month</span>' +
+      '<span class="nx-legend__item"><span class="nx-dot" style="background:#DDE9D5"></span>Total: ' +
+      growth.values.reduce(function (a, b) { return a + b; }, 0) + " in six months</span>";
+  } else {
+    NexoraCharts.empty("growthChart", "No contacts added in the last six months yet.");
+  }
+
+  // Follow-up status ------------------------------------------------------
+  var status = NexoraCharts.read("status-data");
+  if (status && status.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("statusChart"), {
+      type: "doughnut",
+      data: {
+        labels: status.labels,
+        datasets: [{
+          data: status.values,
+          backgroundColor: ["#D99A42", "#D65D5D", "#26866C"],
+          hoverBackgroundColor: ["#c9903c", "#cb5555", "#1f7560"],
+          borderWidth: 3,
+          borderColor: "#ffffff",
+          spacing: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "68%",
+        plugins: {
+          legend: { position: "bottom" }
+        }
+      }
+    });
+  } else {
+    NexoraCharts.empty("statusChart", "No follow-ups scheduled yet.");
+  }
+
+  // Category distribution -------------------------------------------------
+  var category = NexoraCharts.read("category-data");
+  if (category && category.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("categoryChart"), {
+      type: "doughnut",
+      data: {
+        labels: category.labels,
+        datasets: [{
+          data: category.values,
+          backgroundColor: palette,
+          borderWidth: 3,
+          borderColor: "#ffffff",
+          spacing: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "66%",
+        plugins: { legend: { display: false } }
+      }
+    });
+    var legend = category.labels.map(function (label, index) {
+      return '<span class="nx-legend__item"><span class="nx-dot" style="background:' +
+        palette[index % palette.length] + '"></span>' + label +
+        " · " + category.values[index] + "</span>";
+    }).join("");
+    document.getElementById("categoryLegend").innerHTML = legend;
+  } else {
+    NexoraCharts.empty("categoryChart", "No contacts categorised yet.");
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% load static nexora_extras %}
+<aside class="nx-sidebar" id="sidebar" data-sidebar aria-label="Main navigation">
+  <a href="{% url 'dashboard' %}" class="nx-brand" aria-label="NEXORA dashboard">
+    <span class="nx-brand__mark">{% include "partials/logo_mark.html" %}</span>
+    <span class="nx-brand__text">
+      <span class="nx-brand__name">NEXORA</span>
+      <span class="nx-brand__tag">Smart Connections</span>
+    </span>
+  </a>
+
+  <nav class="nx-nav">
+    <span class="nx-nav__label">Workspace</span>
+    {% if current_user|has_perm:"dashboard.view" %}
+      <a class="nx-nav__link {% if request.path == '/dashboard/' %}is-active{% endif %}" href="{% url 'dashboard' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-dashboard"></use></svg>
+        Dashboard
+      </a>
+    {% endif %}
+
+    <span class="nx-nav__label">Relationships</span>
+    {% if current_user|has_perm:"contacts.view" %}
+      <a class="nx-nav__link {% if '/contacts/' in request.path %}is-active{% endif %}" href="{% url 'contacts:list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg>
+        Contact Directory
+      </a>
+    {% endif %}
+    {% if current_user|has_perm:"categories.view" %}
+      <a class="nx-nav__link {% if '/categories/' in request.path %}is-active{% endif %}" href="{% url 'contacts:category_list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg>
+        Categories
+      </a>
+    {% endif %}
+    {% if current_user|has_perm:"interactions.view" %}
+      <a class="nx-nav__link {% if '/interactions/' in request.path %}is-active{% endif %}" href="{% url 'interactions:list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg>
+        Interactions
+      </a>
+    {% endif %}
+    {% if current_user|has_perm:"followups.view" %}
+      <a class="nx-nav__link {% if '/follow-ups/' in request.path %}is-active{% endif %}" href="{% url 'followups:list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg>
+        Follow-ups
+        {% if nav_overdue %}<span class="nx-nav__badge" title="{{ nav_overdue }} overdue follow-up{{ nav_overdue|pluralize }}">{{ nav_overdue }}</span>{% endif %}
+      </a>
+    {% endif %}
+
+    <span class="nx-nav__label">Insights</span>
+    {% if current_user|has_perm:"reports.view" %}
+      <a class="nx-nav__link {% if '/reports/' in request.path %}is-active{% endif %}" href="{% url 'reports:reports' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-chart"></use></svg>
+        Reports &amp; Analytics
+      </a>
+    {% endif %}
+
+    {% if current_user|has_perm:"users.manage" %}
+      <span class="nx-nav__label">Administration</span>
+      <a class="nx-nav__link {% if '/team/' in request.path and '/roles/' not in request.path %}is-active{% endif %}" href="{% url 'accounts:user_list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-users"></use></svg>
+        User Management
+      </a>
+      <a class="nx-nav__link {% if '/team/roles/' in request.path %}is-active{% endif %}" href="{% url 'accounts:role_list' %}">
+        <svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg>
+        Roles &amp; Permissions
+      </a>
+    {% endif %}
+
+    <span class="nx-nav__label">Account</span>
+    <a class="nx-nav__link {% if request.path == '/profile/' %}is-active{% endif %}" href="{% url 'accounts:profile' %}">
+      <svg><use href="{% static 'img/icons.svg' %}#i-user"></use></svg>
+      My Profile
+    </a>
+    <a class="nx-nav__link {% if '/settings/' in request.path %}is-active{% endif %}" href="{% url 'accounts:settings' %}">
+      <svg><use href="{% static 'img/icons.svg' %}#i-settings"></use></svg>
+      Settings
+    </a>
+  </nav>
+
+  <div class="nx-sidebar__foot">
+    <div class="nx-userchip">
+      <span class="nx-avatar nx-avatar--forest" style="width:36px;height:36px;border-radius:11px;font-size:12px">{{ current_user.initials }}</span>
+      <div class="nx-userchip__meta">
+        <div class="nx-userchip__name">{{ current_user.name }}</div>
+        <div class="nx-userchip__role">{{ current_user.role_label }}</div>
+      </div>
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="nx-userchip__logout" aria-label="Sign out" data-bs-toggle="tooltip" title="Sign out">
+          <svg><use href="{% static 'img/icons.svg' %}#i-logout"></use></svg>
+        </button>
+      </form>
+    </div>
+    <div class="nx-brand__tag" style="text-align:center;margin-top:12px;font-size:10px">v{{ app_version }} · Business Contact Management</div>
+  </div>
+</aside>

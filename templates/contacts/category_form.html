@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page" style="max-width:640px">
+  <section class="nx-card nx-card--pad-lg">
+    <div class="nx-card__head">
+      <div>
+        <h2 class="nx-card__title">{{ page_title }}</h2>
+        <p class="nx-card__sub">{{ category.contacts.count }} contact{{ category.contacts.count|pluralize }} currently use this category.</p>
+      </div>
+      <a class="nx-card__link" href="{% url 'contacts:category_list' %}">Back</a>
+    </div>
+
+    <form method="post" class="nx-form" novalidate>
+      {% csrf_token %}
+      {% include "partials/field.html" with field=form.category_name %}
+      {% include "partials/field.html" with field=form.description %}
+      <div class="nx-form-actions">
+        <button type="submit" class="nx-btn nx-btn--primary">Save changes</button>
+        <a class="nx-btn nx-btn--ghost" href="{% url 'contacts:category_list' %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

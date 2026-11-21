@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <section class="nx-card">
+    <div class="nx-card__head">
+      <div>
+        <h2 class="nx-card__title">Reporting period</h2>
+        <p class="nx-card__sub">{{ range_label }} · {{ month_count }} month{{ month_count|pluralize }} in view</p>
+      </div>
+      <span class="nx-badge nx-badge--sage">Live database figures</span>
+    </div>
+    <form method="get" class="nx-filter-panel">
+      <div class="nx-field">
+        <label class="nx-label" for="start-date">From</label>
+        <input class="nx-input" id="start-date" type="date" name="start" value="{{ start_raw }}">
+      </div>
+      <div class="nx-field">
+        <label class="nx-label" for="end-date">To</label>
+        <input class="nx-input" id="end-date" type="date" name="end" value="{{ end_raw }}">
+      </div>
+      <button class="nx-btn nx-btn--primary nx-btn--sm" type="submit" style="margin-bottom:1px">Apply range</button>
+      <div class="nx-filter-presets">
+        {% for preset in presets %}
+          <a class="nx-btn nx-btn--ghost nx-btn--sm" href="?start={{ preset.start }}&end={{ preset.end }}">{{ preset.label }}</a>
+        {% endfor %}
+      </div>
+    </form>
+  </section>
+
+  <div class="nx-grid nx-grid--stats">
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--forest"><svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg></span>
+        <span class="nx-trend nx-trend--flat">In range</span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ new_contacts }}</div>
+        <div class="nx-stat__label">New contacts</div>
+      </div>
+      <div class="nx-help">{{ total_contacts }} in the directory overall</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--sage"><svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ interactions }}</div>
+        <div class="nx-stat__label">Interactions logged</div>
+      </div>
+      <div class="nx-help">{{ interactions_by_type.total }} recorded in this period</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--success"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span>
+        <span class="nx-trend nx-trend--up">{{ followups.completion_rate }}%</span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ followups.completed }}</div>
+        <div class="nx-stat__label">Follow-ups completed</div>
+      </div>
+      <div class="nx-help">of {{ followups.total }} tasks in range</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--amber"><svg><use href="{% static 'img/icons.svg' %}#i-clock"></use></svg></span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ followups.pending }}</div>
+        <div class="nx-stat__label">Pending follow-ups</div>
+      </div>
+      <div class="nx-help">Still within their due date</div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top">
+        <span class="nx-stat__icon nx-stat__icon--danger"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+        <span class="nx-trend nx-trend--{% if followups.overdue %}down{% else %}up{% endif %}">{{ followups.overdue }} overdue</span>
+      </div>
+      <div>
+        <div class="nx-stat__value">{{ followups.overdue }}</div>
+        <div class="nx-stat__label">Overdue follow-ups</div>
+      </div>
+      <div class="nx-help">Past due and still pending</div>
+    </article>
+  </div>
+
+  <div class="nx-grid nx-grid--equal">
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Monthly contact growth</h2>
+          <p class="nx-card__sub">Contacts created inside the selected range.</p>
+        </div>
+      </div>
+      <div class="nx-chart"><canvas id="reportGrowth" role="img" aria-label="Line chart of monthly contact growth"></canvas></div>
+    </section>
+
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Category-wise distribution</h2>
+          <p class="nx-card__sub">Share of contacts by category in this period.</p>
+        </div>
+      </div>
+      <div class="nx-chart"><canvas id="reportCategory" role="img" aria-label="Doughnut chart of category distribution"></canvas></div>
+      <div class="nx-legend" id="reportCategoryLegend"></div>
+    </section>
+  </div>
+
+  <div class="nx-grid nx-grid--equal">
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Interaction mix</h2>
+          <p class="nx-card__sub">How the team is reaching out.</p>
+        </div>
+      </div>
+      <div class="nx-chart nx-chart--sm"><canvas id="reportTypes" role="img" aria-label="Bar chart of interaction types"></canvas></div>
+    </section>
+
+    <section class="nx-card">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Follow-up completion</h2>
+          <p class="nx-card__sub">{{ followups.completion_rate }}% of tasks in range are complete.</p>
+        </div>
+      </div>
+      <div class="nx-chart nx-chart--sm"><canvas id="reportStatus" role="img" aria-label="Doughnut chart of follow-up status"></canvas></div>
+      <div class="nx-legend">
+        <span class="nx-legend__item"><span class="nx-dot" style="background:#D99A42"></span>Pending · {{ followups.pending }}</span>
+        <span class="nx-legend__item"><span class="nx-dot" style="background:#D65D5D"></span>Overdue · {{ followups.overdue }}</span>
+        <span class="nx-legend__item"><span class="nx-dot" style="background:#26866C"></span>Completed · {{ followups.completed }}</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="nx-grid nx-grid--main">
+    <section class="nx-card nx-card--flush">
+      <div class="nx-card__head" style="padding:22px 22px 0;margin-bottom:14px">
+        <div>
+          <h2 class="nx-card__title">Contact report by category</h2>
+          <p class="nx-card__sub">All categories with the share of the directory they hold.</p>
+        </div>
+      </div>
+      {% if category_table %}
+      <div class="nx-table-wrap">
+        <table class="nx-table">
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col">Contacts</th>
+              <th scope="col" style="min-width:170px">Share of directory</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in category_table %}
+            <tr>
+              <td>
+                <div class="nx-cell__main">{{ row.name }}</div>
+                <div class="nx-cell__sub">{{ row.description|default:"—"|truncatechars:58 }}</div>
+              </td>
+              <td><span class="nx-badge nx-badge--{{ row.name|category_tone }}">{{ row.total }}</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div class="nx-progress" style="flex:1">
+                    <div class="nx-progress__bar {% if row.name == 'Lead' %}nx-progress__bar--amber{% endif %}" style="width:{{ row.share }}%"></div>
+                  </div>
+                  <span class="nx-cell__sub" style="min-width:32px">{{ row.share }}%</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="nx-empty nx-empty--sm">
+        <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-tag"></use></svg></span>
+        <div class="nx-empty__title">No categories yet</div>
+      </div>
+      {% endif %}
+    </section>
+
+    <div class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Team contribution</h2>
+            <p class="nx-card__sub">Contacts created in this range.</p>
+          </div>
+        </div>
+        {% if contributors %}
+        <div class="nx-quick-list">
+          {% for person in contributors %}
+          <div class="nx-quick-row">
+            <span class="nx-avatar nx-avatar--sm nx-avatar--sage">{{ person.name|initials }}</span>
+            <div class="nx-quick-row__main">
+              <div class="nx-cell__main">{{ person.name }}</div>
+              <div class="nx-cell__sub">{{ person.role }}</div>
+            </div>
+            <span class="nx-badge nx-badge--outline">{{ person.total }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="nx-help">No contacts were created by the team in this range.</p>
+        {% endif %}
+      </section>
+
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Overdue follow-ups</h2>
+            <p class="nx-card__sub">Oldest commitments first.</p>
+          </div>
+          <a class="nx-card__link" href="{% url 'followups:list' %}?tab=overdue">Open tracker</a>
+        </div>
+        {% if overdue_tasks %}
+        <div class="nx-quick-list">
+          {% for task in overdue_tasks %}
+          <a class="nx-quick-row" href="{% url 'contacts:detail' task.contact_id %}">
+            <span class="nx-avatar nx-avatar--sm nx-avatar--danger"><svg style="width:14px;height:14px"><use href="{% static 'img/icons.svg' %}#i-clock"></use></svg></span>
+            <div class="nx-quick-row__main">
+              <div class="nx-cell__main">{{ task.contact.name }}</div>
+              <div class="nx-cell__sub">{{ task.due_label }} · {{ task.assigned_to.name }}</div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="nx-empty nx-empty--sm">
+          <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span>
+          <div class="nx-empty__title">Nothing overdue</div>
+          <p class="nx-empty__text">Every pending follow-up is still within its due date.</p>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ monthly|json_script:"report-growth-data" }}
+{{ distribution|json_script:"report-category-data" }}
+{{ interactions_by_type|json_script:"report-type-data" }}
+{{ status_chart|json_script:"report-status-data" }}
+<script>
+(function () {
+  var palette = NexoraCharts.palette;
+  var grid = NexoraCharts.grid;
+
+  var growth = NexoraCharts.read("report-growth-data");
+  if (growth && growth.values.length) {
+    new Chart(document.getElementById("reportGrowth"), {
+      type: "line",
+      data: {
+        labels: growth.short_labels,
+        datasets: [{
+          label: "Contacts added",
+          data: growth.values,
+          borderColor: "#003B35",
+          backgroundColor: "rgba(221,233,213,.55)",
+          fill: true,
+          tension: 0.34,
+          borderWidth: 2.4,
+          pointRadius: 3.5,
+          pointBackgroundColor: "#003B35",
+          pointBorderColor: "#ffffff",
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, border: { display: false } },
+          y: { beginAtZero: true, grid: { color: grid, drawTicks: false }, border: { display: false }, ticks: { precision: 0, padding: 8 } }
+        }
+      }
+    });
+  } else {
+    NexoraCharts.empty("reportGrowth", "No contacts in this range yet.");
+  }
+
+  var category = NexoraCharts.read("report-category-data");
+  if (category && category.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("reportCategory"), {
+      type: "doughnut",
+      data: {
+        labels: category.labels,
+        datasets: [{ data: category.values, backgroundColor: palette, borderWidth: 3, borderColor: "#fff", spacing: 2 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { display: false } } }
+    });
+    document.getElementById("reportCategoryLegend").innerHTML = category.labels.map(function (label, i) {
+      return '<span class="nx-legend__item"><span class="nx-dot" style="background:' +
+        palette[i % palette.length] + '"></span>' + label + " · " + category.values[i] + "</span>";
+    }).join("");
+  } else {
+    NexoraCharts.empty("reportCategory", "No contacts in this range.");
+  }
+
+  var types = NexoraCharts.read("report-type-data");
+  if (types && types.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("reportTypes"), {
+      type: "bar",
+      data: {
+        labels: types.labels,
+        datasets: [{
+          data: types.values,
+          backgroundColor: ["#003B35", "#26866C", "#D99A42", "#718078"],
+          borderRadius: 7,
+          maxBarThickness: 26
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, grid: { color: grid, drawTicks: false }, border: { display: false }, ticks: { precision: 0 } },
+          y: { grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+  } else {
+    NexoraCharts.empty("reportTypes", "No interactions in this range.");
+  }
+
+  var status = NexoraCharts.read("report-status-data");
+  if (status && status.values.some(function (v) { return v > 0; })) {
+    new Chart(document.getElementById("reportStatus"), {
+      type: "doughnut",
+      data: {
+        labels: status.labels,
+        datasets: [{ data: status.values, backgroundColor: ["#D99A42", "#D65D5D", "#26866C"], borderWidth: 3, borderColor: "#fff", spacing: 2 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "68%", plugins: { legend: { display: false } } }
+    });
+  } else {
+    NexoraCharts.empty("reportStatus", "No follow-ups in this range.");
+  }
+})();
+</script>
+{% endblock %}

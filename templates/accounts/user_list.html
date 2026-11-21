@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <div class="nx-grid nx-grid--stats">
+    <article class="nx-stat">
+      <div class="nx-stat__top"><span class="nx-stat__icon nx-stat__icon--forest"><svg><use href="{% static 'img/icons.svg' %}#i-users"></use></svg></span></div>
+      <div>
+        <div class="nx-stat__value">{{ total_users }}</div>
+        <div class="nx-stat__label">Team members</div>
+      </div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top"><span class="nx-stat__icon nx-stat__icon--success"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg></span></div>
+      <div>
+        <div class="nx-stat__value">{{ active_users }}</div>
+        <div class="nx-stat__label">Active accounts</div>
+      </div>
+    </article>
+    <article class="nx-stat">
+      <div class="nx-stat__top"><span class="nx-stat__icon"><svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg></span></div>
+      <div>
+        <div class="nx-stat__value">{{ roles|length }}</div>
+        <div class="nx-stat__label">Defined roles</div>
+      </div>
+    </article>
+    <article class="nx-stat" style="justify-content:space-between">
+      <div class="nx-stat__top"><span class="nx-stat__icon nx-stat__icon--sage"><svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg></span></div>
+      <div>
+        <div class="nx-stat__label" style="margin-bottom:8px">Grow the team</div>
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'accounts:user_create' %}">Add team member</a>
+      </div>
+    </article>
+  </div>
+
+  <section class="nx-card">
+    <form method="get" class="nx-toolbar" role="search" aria-label="Filter users">
+      <div class="nx-search">
+        <svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+        <label class="nx-sr-only" for="user-search">Search users</label>
+        <input class="nx-input" id="user-search" type="search" name="q" value="{{ q }}" placeholder="Search by name, username or email…">
+      </div>
+      <label class="nx-sr-only" for="filter-role">Role</label>
+      <select class="nx-select" id="filter-role" name="role" data-autosubmit>
+        <option value="">All roles</option>
+        {% for role in roles %}
+          <option value="{{ role.role_key }}" {% if role_filter == role.role_key %}selected{% endif %}>{{ role.role_name }}</option>
+        {% endfor %}
+      </select>
+      <label class="nx-sr-only" for="filter-status">Status</label>
+      <select class="nx-select" id="filter-status" name="status" data-autosubmit>
+        <option value="">Any status</option>
+        <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
+      </select>
+      <button class="nx-btn nx-btn--ghost nx-btn--sm" type="submit">Apply</button>
+      {% if q or role_filter or status_filter %}
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'accounts:user_list' %}">Reset</a>
+      {% endif %}
+      <div class="nx-toolbar__right">
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'accounts:role_list' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-shield"></use></svg> Roles
+        </a>
+      </div>
+    </form>
+
+    <hr class="nx-divider">
+
+    {% if page_obj.object_list %}
+    <div class="nx-table-wrap">
+      <table class="nx-table">
+        <thead>
+          <tr>
+            <th scope="col">Team member</th>
+            <th scope="col">Role</th>
+            <th scope="col">Contacts</th>
+            <th scope="col">Follow-ups</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in page_obj.object_list %}
+          <tr>
+            <td>
+              <div class="nx-cell">
+                <span class="nx-avatar {% if member.role.role_key == 'admin' %}nx-avatar--forest{% elif member.role.role_key == 'manager' %}nx-avatar--sage{% endif %}">{{ member.initials }}</span>
+                <div>
+                  <div class="nx-cell__main">{{ member.name }}</div>
+                  <div class="nx-cell__sub">@{{ member.username }} · {{ member.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="nx-badge {% if member.role.role_key == 'admin' %}nx-badge--forest{% elif member.role.role_key == 'manager' %}nx-badge--sage{% else %}nx-badge--outline{% endif %}">
+                {{ member.role.role_name }}
+              </span>
+            </td>
+            <td>{{ member.contact_total }}</td>
+            <td>{{ member.followup_total }}</td>
+            <td>
+              {% if member.status == "active" %}
+                <span class="nx-pill nx-pill--active">Active</span>
+              {% else %}
+                <span class="nx-pill nx-pill--inactive">Inactive</span>
+              {% endif %}
+            </td>
+            <td class="nx-td-actions">
+              <div class="nx-actions">
+                <a class="nx-icon-btn" href="{% url 'accounts:user_edit' member.user_id %}" title="Edit account" data-bs-toggle="tooltip" aria-label="Edit {{ member.name }}">
+                  <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                </a>
+                {% if member.user_id != current_user.user_id %}
+                  <form method="post" action="{% url 'accounts:user_toggle_status' member.user_id %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="nx-icon-btn {% if member.status == 'active' %}nx-icon-btn--danger{% endif %}"
+                            title="{% if member.status == 'active' %}Deactivate{% else %}Activate{% endif %}" data-bs-toggle="tooltip">
+                      <svg><use href="{% static 'img/icons.svg' %}#{% if member.status == 'active' %}i-lock{% else %}i-refresh{% endif %}"></use></svg>
+                    </button>
+                  </form>
+                  <button type="button" class="nx-icon-btn nx-icon-btn--danger" title="Delete account" data-bs-toggle="tooltip"
+                          data-confirm-url="{% url 'accounts:user_delete' member.user_id %}"
+                          data-confirm-title="Delete {{ member.name }}?"
+                          data-confirm-text="Accounts linked to contacts or records cannot be deleted — deactivate them instead."
+                          data-confirm-action="Delete account" aria-label="Delete {{ member.name }}">
+                    <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg>
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+    {% else %}
+    <div class="nx-empty">
+      <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-users"></use></svg></span>
+      <div class="nx-empty__title">No team members match</div>
+      <p class="nx-empty__text">Adjust the filters or add a new team member.</p>
+      <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'accounts:user_create' %}">Add team member</a>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

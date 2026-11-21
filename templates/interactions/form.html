@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+  <div class="nx-grid" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start">
+
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">{{ page_title }}</h2>
+          <p class="nx-card__sub">A clear note now saves a lot of guessing later.</p>
+        </div>
+        <a class="nx-card__link" href="{% url 'interactions:list' %}">Cancel</a>
+      </div>
+
+      {% if contact %}
+      <div class="nx-alert nx-alert--info" style="margin-bottom:18px">
+        <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg></span>
+        <div class="nx-alert__body">
+          Recording for <strong>{{ contact.name }}</strong> · {{ contact.company|default:"—" }}
+          <a class="nx-link" style="margin-left:6px" href="{% url 'contacts:detail' contact.contact_id %}">Open profile</a>
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="nx-alert nx-alert--error">
+            <span class="nx-alert__icon"><svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg></span>
+            <div class="nx-alert__body">{{ form.non_field_errors|join:" " }}</div>
+          </div>
+        {% endif %}
+
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.contact %}
+          {% include "partials/field.html" with field=form.interaction_type %}
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.interaction_date %}</div>
+          <div class="nx-span-2">{% include "partials/field.html" with field=form.notes %}</div>
+        </div>
+
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">
+            <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg> Save interaction
+          </button>
+          <a class="nx-btn nx-btn--ghost" href="{% if contact %}{% url 'contacts:detail' contact.contact_id %}{% else %}{% url 'interactions:list' %}{% endif %}">Cancel</a>
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">What makes a good note</h2>
+        <div class="nx-role-card__perm-list" style="margin-top:12px">
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>What was discussed and agreed</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>Any commitment you made, and by when</span></div>
+          <div class="nx-role-card__perm"><svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg><span>The next step and who owns it</span></div>
+        </div>
+      </section>
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Interaction types</h2>
+        <div class="nx-tag-list" style="margin-top:12px">
+          <span class="nx-badge nx-badge--forest">Phone Call</span>
+          <span class="nx-badge nx-badge--sage">Meeting</span>
+          <span class="nx-badge nx-badge--amber">Email</span>
+          <span class="nx-badge nx-badge--muted">Other</span>
+        </div>
+        <p class="nx-help" style="margin-top:12px">Your name and the current time are recorded automatically. Future dates cannot be logged.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

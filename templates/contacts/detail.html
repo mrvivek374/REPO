@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ contact.name }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <section class="nx-card nx-card--pad-lg">
+    <div class="nx-profile-hero">
+      <span class="nx-avatar nx-avatar--lg nx-avatar--forest">{{ contact.initials }}</span>
+      <div class="nx-profile-hero__meta">
+        <h2 class="nx-profile-hero__name">{{ contact.name }}</h2>
+        <p class="nx-profile-hero__sub">
+          {{ contact.job_title|default:"Contact" }}{% if contact.company %} · {{ contact.company }}{% endif %}
+        </p>
+        <div class="nx-profile-hero__tags">
+          <span class="nx-badge nx-badge--{{ contact.category.category_name|category_tone }}">{{ contact.category.category_name }}</span>
+          <span class="nx-badge nx-badge--outline">{{ contact.reference }}</span>
+          <span class="nx-badge nx-badge--outline">Added {% nx_date contact.created_at %}</span>
+          {% if contact.is_active %}
+            <span class="nx-pill nx-pill--active">Active relationship</span>
+          {% else %}
+            <span class="nx-pill nx-pill--inactive">No recent contact</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="nx-actions" style="flex-wrap:wrap">
+        {% if current_user|has_perm:"interactions.add" %}
+          <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'interactions:create' %}?contact={{ contact.contact_id }}">
+            <svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg> Record interaction
+          </a>
+        {% endif %}
+        {% if current_user|has_perm:"followups.add" %}
+          <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'followups:create' %}?contact={{ contact.contact_id }}">
+            <svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg> Follow-up
+          </a>
+        {% endif %}
+        {% if current_user|has_perm:"contacts.edit" %}
+          <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'contacts:edit' contact.contact_id %}">
+            <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg> Edit
+          </a>
+        {% endif %}
+        {% if current_user|has_perm:"contacts.delete" %}
+          <button type="button" class="nx-btn nx-btn--danger nx-btn--sm"
+                  data-confirm-url="{% url 'contacts:delete' contact.contact_id %}"
+                  data-confirm-title="Delete {{ contact.name }}?"
+                  data-confirm-text="This permanently removes the contact, all interactions and follow-ups linked to them."
+                  data-confirm-action="Delete contact">
+            <svg><use href="{% static 'img/icons.svg' %}#i-trash"></use></svg> Delete
+          </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <hr class="nx-divider">
+
+    <div class="nx-kpi-row">
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ interactions|length }}</div>
+        <div class="nx-mini-stat__label">Interactions</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ open_followup_count }}</div>
+        <div class="nx-mini-stat__label">Open follow-ups</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ overdue_followup_count }}</div>
+        <div class="nx-mini-stat__label">Overdue</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{% if last_interaction %}{% nx_date last_interaction.interaction_date %}{% else %}—{% endif %}</div>
+        <div class="nx-mini-stat__label">Last contact</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="nx-grid nx-grid--main">
+    <div class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Interaction history</h2>
+            <p class="nx-card__sub">Every recorded conversation with {{ contact.name }}.</p>
+          </div>
+          {% if current_user|has_perm:"interactions.add" %}
+            <a class="nx-card__link" href="{% url 'interactions:create' %}?contact={{ contact.contact_id }}">
+              Record <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+            </a>
+          {% endif %}
+        </div>
+
+        {% if interactions %}
+        <div class="nx-timeline">
+          {% for interaction in interactions %}
+          <div class="nx-timeline__item">
+            <span class="nx-timeline__icon nx-timeline__icon--{{ interaction.tone }}">
+              <svg><use href="{% static 'img/icons.svg' %}#i-{{ interaction.icon }}"></use></svg>
+            </span>
+            <div class="nx-timeline__body">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div class="nx-timeline__title">{{ interaction.get_interaction_type_display }}</div>
+                <div class="nx-cell__sub" style="white-space:nowrap">{% nx_datetime interaction.interaction_date %}</div>
+              </div>
+              <p class="nx-cell__sub" style="white-space:normal;margin-top:4px;line-height:1.55">{{ interaction.notes }}</p>
+              <div class="nx-timeline__meta">
+                <span>Recorded by {{ interaction.user.name }}</span>
+                {% if interaction.user_id == current_user.user_id or current_user|has_perm:"users.manage" %}
+                  <span>·</span>
+                  <button type="button" class="nx-link" style="background:none;border:0;padding:0;color:var(--danger);font-size:11.5px"
+                          data-confirm-url="{% url 'interactions:delete' interaction.interaction_id %}"
+                          data-confirm-title="Delete this interaction?"
+                          data-confirm-text="The note will be removed from {{ contact.name }}'s history."
+                          data-confirm-action="Delete interaction">Delete</button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="nx-empty nx-empty--sm">
+          <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg></span>
+          <div class="nx-empty__title">No interactions yet</div>
+          <p class="nx-empty__text">Log the first call, meeting or email to start the relationship history.</p>
+          {% if current_user|has_perm:"interactions.add" %}
+            <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'interactions:create' %}?contact={{ contact.contact_id }}">Record interaction</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <div>
+            <h2 class="nx-card__title">Follow-up history</h2>
+            <p class="nx-card__sub">Commitments made with this contact.</p>
+          </div>
+          {% if current_user|has_perm:"followups.add" %}
+            <a class="nx-card__link" href="{% url 'followups:create' %}?contact={{ contact.contact_id }}">
+              Schedule <svg><use href="{% static 'img/icons.svg' %}#i-arrow-right"></use></svg>
+            </a>
+          {% endif %}
+        </div>
+
+        {% if followups %}
+        <div class="nx-table-wrap">
+          <table class="nx-table nx-table--compact">
+            <thead>
+              <tr>
+                <th scope="col">Due</th>
+                <th scope="col">Task</th>
+                <th scope="col">Assigned</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for task in followups %}
+              <tr>
+                <td>
+                  <div class="nx-cell__main" style="font-size:12.5px">{% nx_date task.due_date %}</div>
+                  <div class="nx-cell__sub">{{ task.due_label }}</div>
+                </td>
+                <td><div class="nx-note-cell">{{ task.notes }}</div></td>
+                <td>{{ task.assigned_to.name }}</td>
+                <td><span class="nx-pill nx-pill--{{ task.display_status }}">{{ task.display_status_label }}</span></td>
+                <td class="nx-td-actions">
+                  <div class="nx-actions">
+                    {% if current_user|has_perm:"followups.edit" and task.status == "pending" %}
+                    <form method="post" action="{% url 'followups:complete' task.followup_id %}" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{% url 'contacts:detail' contact.contact_id %}">
+                      <button type="submit" class="nx-icon-btn" title="Mark complete" data-bs-toggle="tooltip" aria-label="Mark complete">
+                        <svg><use href="{% static 'img/icons.svg' %}#i-check"></use></svg>
+                      </button>
+                    </form>
+                    {% endif %}
+                    {% if current_user|has_perm:"followups.edit" %}
+                    <a class="nx-icon-btn" href="{% url 'followups:edit' task.followup_id %}" title="Edit" data-bs-toggle="tooltip" aria-label="Edit follow-up">
+                      <svg><use href="{% static 'img/icons.svg' %}#i-edit"></use></svg>
+                    </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="nx-empty nx-empty--sm">
+          <span class="nx-empty__icon"><svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg></span>
+          <div class="nx-empty__title">No follow-ups scheduled</div>
+          <p class="nx-empty__text">Schedule the next touchpoint so nothing slips away.</p>
+          {% if current_user|has_perm:"followups.add" %}
+            <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'followups:create' %}?contact={{ contact.contact_id }}">New follow-up</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </section>
+    </div>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <h2 class="nx-card__title">Contact information</h2>
+        </div>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr">
+          <div>
+            <dt>Company</dt>
+            <dd class="nx-contact-row">
+              <svg><use href="{% static 'img/icons.svg' %}#i-building"></use></svg>
+              {{ contact.company|default:"Not provided" }}
+            </dd>
+          </div>
+          <div>
+            <dt>Job title</dt>
+            <dd>{{ contact.job_title|default:"Not provided" }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd><a class="nx-contact-row" href="tel:{{ contact.phone }}"><svg><use href="{% static 'img/icons.svg' %}#i-phone"></use></svg>{{ contact.phone }}</a></dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd><a class="nx-contact-row" href="mailto:{{ contact.email }}"><svg><use href="{% static 'img/icons.svg' %}#i-mail"></use></svg>{{ contact.email }}</a></dd>
+          </div>
+          <div>
+            <dt>Address</dt>
+            <dd>{{ contact.address|default:"Not provided"|linebreaksbr }}</dd>
+          </div>
+          <div>
+            <dt>Category</dt>
+            <dd><span class="nx-badge nx-badge--{{ contact.category.category_name|category_tone }}">{{ contact.category.category_name }}</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <h2 class="nx-card__title">Notes</h2>
+          {% if current_user|has_perm:"contacts.edit" %}
+            <a class="nx-card__link" href="{% url 'contacts:edit' contact.contact_id %}">Edit</a>
+          {% endif %}
+        </div>
+        {% if contact.notes %}
+          <div class="nx-note-box">{{ contact.notes }}</div>
+        {% else %}
+          <p class="nx-help">No notes have been added for this contact yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="nx-card">
+        <div class="nx-card__head">
+          <h2 class="nx-card__title">Record details</h2>
+        </div>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr">
+          <div><dt>Contact ID</dt><dd>{{ contact.reference }}</dd></div>
+          <div><dt>Created by</dt><dd>{{ contact.created_by.name }}</dd></div>
+          <div><dt>Created</dt><dd>{% nx_datetime contact.created_at %}</dd></div>
+          <div><dt>Last updated</dt><dd>{% nx_datetime contact.updated_at %}</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% load static %}
+<div class="nx-modal" id="nxConfirm" hidden>
+  <div class="nx-modal__backdrop" data-confirm-close></div>
+  <div class="nx-modal__panel" role="dialog" aria-modal="true" aria-labelledby="nxConfirmTitle">
+    <div class="nx-modal__icon">
+      <svg><use href="{% static 'img/icons.svg' %}#i-alert"></use></svg>
+    </div>
+    <h2 class="nx-modal__title" id="nxConfirmTitle" data-confirm-title>Delete this record?</h2>
+    <p class="nx-modal__text" data-confirm-text>This action cannot be undone.</p>
+    <form method="post" action="">
+      {% csrf_token %}
+      <div class="nx-modal__actions">
+        <button type="button" class="nx-btn nx-btn--ghost" data-confirm-cancel>Cancel</button>
+        <button type="submit" class="nx-btn nx-btn--primary" style="background:var(--danger);border-color:var(--danger);box-shadow:0 9px 20px rgba(214,93,93,.25)" data-confirm-action>Delete</button>
+      </div>
+    </form>
+  </div>
+</div>

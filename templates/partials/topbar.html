@@ -1,0 +1,63 @@
+{% load static nexora_extras %}
+<header class="nx-topbar">
+  <div class="nx-topbar__left">
+    <button type="button" class="nx-mobile-toggle" data-sidebar-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+      <svg><use href="{% static 'img/icons.svg' %}#i-menu"></use></svg>
+    </button>
+    <div style="min-width:0">
+      <nav class="nx-topbar__crumbs" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard' %}">NEXORA</a>
+        {% if breadcrumbs %}
+          {% for crumb in breadcrumbs %}
+            <span class="sep">/</span>
+            {% if crumb.1 %}<a href="{{ crumb.1 }}">{{ crumb.0 }}</a>{% else %}<span>{{ crumb.0 }}</span>{% endif %}
+          {% endfor %}
+        {% endif %}
+      </nav>
+      <h1 class="nx-topbar__title">{{ page_title|default:"Dashboard" }}</h1>
+    </div>
+  </div>
+
+  <div class="nx-topbar__actions">
+    <span class="nx-topbar__date">{% now "D, d M Y" %}</span>
+
+    {% if current_user|has_perm:"contacts.view" %}
+    <form class="nx-search nx-search--top" method="get" action="{% url 'contacts:list' %}" role="search">
+      <svg><use href="{% static 'img/icons.svg' %}#i-search"></use></svg>
+      <label class="nx-sr-only" for="topbar-search">Search contacts</label>
+      <input class="nx-input" id="topbar-search" type="search" name="q" placeholder="Search contacts…" value="{{ request.GET.q|default:'' }}">
+    </form>
+    {% endif %}
+
+    {% if current_user|has_perm:"contacts.add" or current_user|has_perm:"interactions.add" or current_user|has_perm:"followups.add" %}
+    <div class="dropdown">
+      <button class="nx-btn nx-btn--primary nx-btn--sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <svg><use href="{% static 'img/icons.svg' %}#i-plus"></use></svg>
+        New
+        <svg style="width:13px;height:13px;opacity:.8"><use href="{% static 'img/icons.svg' %}#i-chevron-down"></use></svg>
+      </button>
+      <div class="dropdown-menu dropdown-menu-end">
+        {% if current_user|has_perm:"contacts.add" %}
+        <a class="dropdown-item" href="{% url 'contacts:create' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-contact"></use></svg> Add contact
+        </a>
+        {% endif %}
+        {% if current_user|has_perm:"interactions.add" %}
+        <a class="dropdown-item" href="{% url 'interactions:create' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-chat"></use></svg> Record interaction
+        </a>
+        {% endif %}
+        {% if current_user|has_perm:"followups.add" %}
+        <a class="dropdown-item" href="{% url 'followups:create' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-calendar"></use></svg> New follow-up
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'accounts:profile' %}" class="nx-avatar" style="width:38px;height:38px" aria-label="My profile" title="{{ current_user.name }}">
+      {{ current_user.initials }}
+    </a>
+  </div>
+</header>

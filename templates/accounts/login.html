@@ -1,0 +1,142 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · NEXORA</title>
+  <meta name="description" content="Sign in to NEXORA — Smart Connections. Smarter Management.">
+  <meta name="theme-color" content="#003B35">
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/nexora.css' %}">
+</head>
+<body class="nx-body">
+  <main class="nx-auth">
+    <section class="nx-auth__panel" aria-label="About NEXORA">
+      <svg class="nx-auth__pattern" viewBox="0 0 320 320" fill="none" aria-hidden="true">
+        <circle cx="160" cy="58" r="17" stroke="currentColor" stroke-width="2"/>
+        <circle cx="46" cy="248" r="17" stroke="currentColor" stroke-width="2"/>
+        <circle cx="274" cy="248" r="17" stroke="currentColor" stroke-width="2"/>
+        <circle cx="160" cy="176" r="17" stroke="currentColor" stroke-width="2"/>
+        <path d="M152 74 62 234M168 74l90 160M58 254h204M76 238l76-52M244 238l-76-52" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+
+      <div class="nx-auth__brand">
+        <span class="nx-brand__mark">{% include "partials/logo_mark.html" %}</span>
+        <span>
+          <span class="nx-brand__name">NEXORA</span>
+          <span class="nx-brand__tag">Smart Connections. Smarter Management.</span>
+        </span>
+      </div>
+
+      <div class="nx-auth__headline">
+        <h1>Every relationship,<br><em>beautifully managed.</em></h1>
+        <p>A calm, considered workspace for the contacts, conversations and commitments that grow your business.</p>
+        <div class="nx-auth__stats">
+          <div>
+            <div class="nx-auth__stat-value">360°</div>
+            <div class="nx-auth__stat-label">Contact intelligence</div>
+          </div>
+          <div>
+            <div class="nx-auth__stat-value">3</div>
+            <div class="nx-auth__stat-label">Role-based workspaces</div>
+          </div>
+          <div>
+            <div class="nx-auth__stat-value">0</div>
+            <div class="nx-auth__stat-label">Follow-ups forgotten</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nx-auth__foot">
+        <span>© {% now "Y" %} NEXORA</span>
+        <span>Business Contact Management System</span>
+        <span>v{{ app_version }}</span>
+      </div>
+    </section>
+
+    <section class="nx-auth__form-side">
+      <div class="nx-auth-card">
+        <span class="nx-auth-card__eyebrow">Welcome back</span>
+        <h2>Sign in to NEXORA</h2>
+        <p class="nx-auth-card__sub">Use the credentials provided by your administrator.</p>
+
+        {% if messages %}
+          <div class="nx-alerts">
+            {% for message in messages %}
+              <div class="nx-alert nx-alert--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% else %}info{% endif %}">
+                <span class="nx-alert__icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>
+                </span>
+                <div class="nx-alert__body">{{ message }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+          <div class="nx-alerts">
+            {% for error in form.non_field_errors %}
+              <div class="nx-alert nx-alert--error">
+                <span class="nx-alert__icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>
+                </span>
+                <div class="nx-alert__body">{{ error }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+          <div class="nx-field {% if form.username.errors %}nx-field--error{% endif %}">
+            <label class="nx-label" for="{{ form.username.id_for_label }}">Username or email</label>
+            {{ form.username }}
+            {% for error in form.username.errors %}<p class="nx-error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="nx-field {% if form.password.errors %}nx-field--error{% endif %}">
+            <label class="nx-label" for="{{ form.password.id_for_label }}">Password</label>
+            <div class="nx-pw-wrap">
+              {{ form.password }}
+              <button type="button" class="nx-pw-toggle" data-pw-toggle="{{ form.password.id_for_label }}" aria-label="Show password" aria-pressed="false">
+                <svg data-icon-show><use href="{% static 'img/icons.svg' %}#i-eye"></use></svg>
+                <svg data-icon-hide style="display:none"><use href="{% static 'img/icons.svg' %}#i-eye-off"></use></svg>
+              </button>
+            </div>
+            {% for error in form.password.errors %}<p class="nx-error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="nx-auth__row">
+            <label class="nx-remember" for="{{ form.remember.id_for_label }}">
+              {{ form.remember }}
+              Keep me signed in
+            </label>
+            <span class="nx-help">Protected session</span>
+          </div>
+
+          <button type="submit" class="nx-btn nx-btn--primary nx-btn--block" style="min-height:48px;font-size:14px">
+            <svg><use href="{% static 'img/icons.svg' %}#i-lock"></use></svg>
+            Sign in securely
+          </button>
+        </form>
+
+        <div class="nx-demo">
+          <div class="nx-demo__title">Demo accounts</div>
+          <div class="nx-demo__row"><span>Administrator</span><code>admin / Nexora@123</code></div>
+          <div class="nx-demo__row"><span>Manager</span><code>manager / Nexora@123</code></div>
+          <div class="nx-demo__row"><span>Staff</span><code>staff / Nexora@123</code></div>
+          <p class="nx-demo__hint">Seeded with fictional demonstration records. Change passwords before any real use.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="{% static 'js/nexora.js' %}"></script>
+</body>
+</html>

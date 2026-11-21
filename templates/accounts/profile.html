@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static nexora_extras %}
+
+{% block title %}{{ page_title }} · NEXORA{% endblock %}
+
+{% block content %}
+<div class="nx-page">
+
+  <section class="nx-card nx-card--pad-lg">
+    <div class="nx-profile-hero">
+      <span class="nx-avatar nx-avatar--lg nx-avatar--forest">{{ current_user.initials }}</span>
+      <div class="nx-profile-hero__meta">
+        <h2 class="nx-profile-hero__name">{{ current_user.name }}</h2>
+        <p class="nx-profile-hero__sub">{{ current_user.job_title|default:"Team member" }} · @{{ current_user.username }}</p>
+        <div class="nx-profile-hero__tags">
+          <span class="nx-badge nx-badge--forest">{{ current_user.role_label }}</span>
+          {% if current_user.status == "active" %}
+            <span class="nx-pill nx-pill--active">Active account</span>
+          {% else %}
+            <span class="nx-pill nx-pill--inactive">Inactive</span>
+          {% endif %}
+          <span class="nx-badge nx-badge--outline">Member since {% nx_date current_user.date_joined %}</span>
+        </div>
+      </div>
+      <div class="nx-actions">
+        <a class="nx-btn nx-btn--ghost nx-btn--sm" href="{% url 'accounts:settings' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-settings"></use></svg> Settings
+        </a>
+        <a class="nx-btn nx-btn--primary nx-btn--sm" href="{% url 'accounts:password_change' %}">
+          <svg><use href="{% static 'img/icons.svg' %}#i-lock"></use></svg> Change password
+        </a>
+      </div>
+    </div>
+
+    <hr class="nx-divider">
+
+    <div class="nx-kpi-row">
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ profile_stats.contacts_created }}</div>
+        <div class="nx-mini-stat__label">Contacts created</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ profile_stats.interactions }}</div>
+        <div class="nx-mini-stat__label">Interactions recorded</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ profile_stats.followups_open }}</div>
+        <div class="nx-mini-stat__label">Open follow-ups</div>
+      </div>
+      <div class="nx-mini-stat">
+        <div class="nx-mini-stat__value">{{ profile_stats.followups_done }}</div>
+        <div class="nx-mini-stat__label">Completed follow-ups</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="nx-grid nx-grid--main">
+    <section class="nx-card nx-card--pad-lg">
+      <div class="nx-card__head">
+        <div>
+          <h2 class="nx-card__title">Personal details</h2>
+          <p class="nx-card__sub">Keep your contact information current for your team.</p>
+        </div>
+      </div>
+      <form method="post" class="nx-form" novalidate>
+        {% csrf_token %}
+        <div class="nx-grid nx-grid--form">
+          {% include "partials/field.html" with field=form.name %}
+          {% include "partials/field.html" with field=form.job_title %}
+          {% include "partials/field.html" with field=form.email %}
+          {% include "partials/field.html" with field=form.phone %}
+        </div>
+        <div class="nx-form-actions">
+          <button type="submit" class="nx-btn nx-btn--primary">Save profile</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="nx-stack">
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Account details</h2>
+        <dl class="nx-detail-list" style="grid-template-columns:1fr;margin-top:12px">
+          <div><dt>Username</dt><dd>@{{ current_user.username }}</dd></div>
+          <div><dt>Role</dt><dd>{{ current_user.role_label }}</dd></div>
+          <div><dt>Status</dt><dd>{{ current_user.display_status }}</dd></div>
+          <div><dt>Last sign-in</dt><dd>{% if current_user.last_login %}{% nx_datetime current_user.last_login %}{% else %}This is your first session{% endif %}</dd></div>
+        </dl>
+      </section>
+
+      <section class="nx-card">
+        <h2 class="nx-card__title" style="font-size:14.5px">Your access</h2>
+        <div class="nx-tag-list" style="margin-top:10px">
+          {% for code in current_user.role.permissions|slice:":6" %}
+            <span class="nx-badge nx-badge--outline">{{ code }}</span>
+          {% empty %}
+            <span class="nx-badge nx-badge--forest">Full administrator access</span>
+          {% endfor %}
+        </div>
+        <p class="nx-help" style="margin-top:12px">Permissions are granted by your administrator from the Roles screen.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

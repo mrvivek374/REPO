@@ -1,0 +1,14 @@
+# NEXORA — Business Contact Management System
+# Install with:  pip install -r requirements.txt
+
+Django==6.1.3
+python-dotenv==1.2.4
+
+# MySQL driver.
+# PyMySQL is pure Python, so it installs without a C compiler on Windows.
+# The project wires it into Django in nexora/__init__.py.
+PyMySQL==1.2.4
+
+# Optional: the "official" MySQL driver. If you prefer it, install
+# mysqlclient and remove the PyMySQL shim from nexora/__init__.py.
+# mysqlclient>=2.2.7
