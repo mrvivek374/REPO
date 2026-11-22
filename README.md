@@ -105,7 +105,7 @@ support.
 | --- | --- |
 | Frontend | HTML5, CSS3 (custom neumorphic design system), vanilla JS, Bootstrap 5.3 (grid, dropdown, tooltip), Chart.js 4 |
 | Backend | Python 3.10+ / **Django 6.1** |
-| Database | **MySQL 8+** (utf8mb4) |
+| Database | **MySQL 8.4+** (utf8mb4) — Django 6.1's minimum; PostgreSQL also supported for Vercel |
 | Driver | PyMySQL (pure Python — no C compiler needed on Windows) |
 | Editor | Visual Studio Code |
 
@@ -209,7 +209,9 @@ Nexora/
 ## 5. Requirements
 
 * **Python 3.10 or newer** (`python --version`). Tested on 3.14.
-* **MySQL 8.0 or newer** running locally (MySQL Workbench optional).
+* **MySQL 8.4 or newer** running locally (MySQL Workbench optional). Django 6.1
+  refuses older servers; see [Deploying to Vercel](#12-deploying-to-vercel) for
+  the PostgreSQL alternative.
 * **Visual Studio Code** with the Python extension (recommended).
 * No Node.js, no build step, no internet connection at runtime — the fonts are
   the only optional online asset and they degrade to system fonts gracefully.
@@ -447,7 +449,7 @@ python manage.py test
 * last-administrator protection and a page-render smoke test for every screen
   in every role.
 
-The suite passes on both SQLite and MySQL 8+. Django's test runner creates a
+The suite passes on both SQLite and MySQL 8.4+. Django's test runner creates a
 throwaway database (`test_nexora_db`), so your real data is untouched.
 
 ### Manual checklist (the 14 required scenarios)
@@ -522,9 +524,11 @@ Every page touches the database (sessions included), so **without a database
 URL the deployment builds but returns HTTP 500 on every page.** Pick one of the
 two supported options.
 
-**Option A — hosted MySQL (keeps the project's MySQL stack).**
-Aiven, Clever Cloud, TiDB Serverless, Railway and Vercel's Marketplace MySQL
-integrations all hand you a URL like:
+**Option A — hosted MySQL 8.4 or newer (keeps the project's MySQL stack).**
+Django 6.1 refuses any MySQL server below 8.4. Services that only speak the
+MySQL 8.0 protocol (TiDB Cloud, several free tiers) fail at `migrate` with
+`MySQL 8.4 or later is required (found 8.0.11)` — that is the database, not
+this code. Use a provider that offers MySQL 8.4+ and paste its URL:
 
 ```text
 mysql://user:password@host:3306/nexora_db?ssl=true
