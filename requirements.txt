@@ -9,6 +9,11 @@ python-dotenv==1.2.4
 # The project wires it into Django in nexora/__init__.py.
 PyMySQL==1.2.4
 
+# PostgreSQL driver. Only used when a DATABASE_URL / POSTGRES_URL pointing at
+# a PostgreSQL server is configured (for example the Vercel Marketplace
+# Postgres/Neon integration). MySQL remains the default database.
+psycopg[binary]==3.3.9
+
 # Optional: the "official" MySQL driver. If you prefer it, install
 # mysqlclient and remove the PyMySQL shim from nexora/__init__.py.
 # mysqlclient>=2.2.7

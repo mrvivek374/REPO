@@ -152,8 +152,39 @@ def _mysql_from_url(url: str) -> dict:
     }
 
 
-# A hosted MySQL provider can be configured with a single connection URL.
+def _postgres_from_url(url: str) -> dict:
+    """Build a PostgreSQL config from postgres://user:pass@host:port/name.
+
+    Used only when a Vercel Marketplace database integration injects a
+    PostgreSQL URL (DATABASE_URL / POSTGRES_URL). MySQL stays the default.
+    """
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    options: dict = {}
+    sslmode = (query.get("sslmode") or [""])[0]
+    if sslmode:
+        options["sslmode"] = sslmode
+    elif (parsed.hostname or "").endswith((".neon.tech", ".supabase.co", ".render.com")):
+        # These providers refuse plain-text connections.
+        options["sslmode"] = "require"
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": parsed.path.lstrip("/") or "postgres",
+        "USER": unquote(parsed.username or ""),
+        "PASSWORD": unquote(parsed.password or ""),
+        "HOST": parsed.hostname or "127.0.0.1",
+        "PORT": str(parsed.port or 5432),
+        "OPTIONS": options,
+        "CONN_MAX_AGE": _db_conn_max_age,
+        "CONN_HEALTH_CHECKS": True,
+    }
+
+
+# A hosted provider can be configured with a single connection URL.
 _mysql_url = (os.getenv("MYSQL_URL") or os.getenv("DATABASE_URL") or "").strip()
+_postgres_url = (os.getenv("POSTGRES_URL") or "").strip()
+if not _postgres_url and _mysql_url.startswith(("postgres://", "postgresql://")):
+    _postgres_url = _mysql_url
 
 if DB_ENGINE == "sqlite":
     DATABASES = {
@@ -164,6 +195,8 @@ if DB_ENGINE == "sqlite":
     }
 elif _mysql_url.startswith(("mysql://", "mysql2://", "mariadb://")):
     DATABASES = {"default": _mysql_from_url(_mysql_url)}
+elif _postgres_url.startswith(("postgres://", "postgresql://")):
+    DATABASES = {"default": _postgres_from_url(_postgres_url)}
 else:
     DATABASES = {
         "default": {

@@ -497,33 +497,58 @@ an exported snapshot for reference and manual import.
 
 ## 12. Deploying to Vercel
 
-NEXORA runs on Vercel as a single Python function. Three small files make that
-work and are already in the repository:
+NEXORA runs on Vercel as a single Python function (the ASGI app) plus static
+files served from Vercel's CDN. The repository already contains everything
+Vercel needs:
 
 | File | Purpose |
 | --- | --- |
 | `.python-version` | Pins Python 3.12. Django 6.1 requires Python ≥ 3.12 — without the pin Vercel can pick an older runtime, `pip install Django==6.1.3` is skipped, and the build fails with `[DJANGO_SETTINGS_FAILED]`. |
-| `vercel.json` | Declares the Django framework and the `nexora/asgi.py` function (60 s, 1 GB). |
-| `.vercelignore` | Keeps `.venv`, `db.sqlite3`, `staticfiles/` and `.env` out of the upload. |
+| `vercel.json` | Declares the Django framework, the `nexora/asgi.py` function (60 s, 1 GB) and the build command (`migrate` → `seed_demo` → `collectstatic`). |
+| `.vercelignore` | Keeps `.venv`, `.env`, `db.sqlite3` and `staticfiles/` out of the upload. |
 
-### Two things a serverless host cannot give you
+Vercel finds `manage.py`, reads `DJANGO_SETTINGS_MODULE`, uses
+`ASGI_APPLICATION`, installs `requirements.txt`, serves `/static/` from
+`STATIC_ROOT` and runs the build command from `vercel.json`.
 
-1. **No local MySQL.** `127.0.0.1:3306` on your computer does not exist inside
-   Vercel. Use a hosted MySQL (PlanetScale, Aiven, Clever Cloud, TiDB
-   Serverless, Railway — Vercel's Marketplace also lists MySQL integrations)
-   and pass its connection URL to the deployment.
-2. **No persistent SQLite.** Vercel's filesystem is read-only and per
-   invocation, so a `db.sqlite3` there would be empty and would vanish.
+### The one thing Vercel cannot provide: the database
 
-### Step 1 — create a hosted MySQL database
+Vercel has **no database** and a **read-only, per-invocation filesystem**:
 
-Create the database and copy its connection string. It usually looks like:
+* `127.0.0.1:3306` on your computer does not exist inside Vercel;
+* a `db.sqlite3` uploaded there would be empty and would disappear.
+
+Every page touches the database (sessions included), so **without a database
+URL the deployment builds but returns HTTP 500 on every page.** Pick one of the
+two supported options.
+
+**Option A — hosted MySQL (keeps the project's MySQL stack).**
+Aiven, Clever Cloud, TiDB Serverless, Railway and Vercel's Marketplace MySQL
+integrations all hand you a URL like:
 
 ```text
 mysql://user:password@host:3306/nexora_db?ssl=true
 ```
 
-### Step 2 — set environment variables in Vercel
+Put it in `MYSQL_URL`.
+
+**Option B — Vercel Marketplace Postgres (one click, free tier).**
+Install a Postgres/Neon integration on the Vercel project; Vercel injects
+`DATABASE_URL` (and/or `POSTGRES_URL`) automatically, and the project's
+`settings.py` uses it as soon as it starts with `postgres://`. The driver
+(`psycopg[binary]`) is already in `requirements.txt`. MySQL stays the default;
+Postgres is only used when one of those URLs is present.
+
+### Step 1 — import the project
+
+1. Push the repository to GitHub.
+2. On vercel.com/new, import it.
+3. On the configuration screen leave **Root Directory** empty (the repository
+   root is the Django project root) and keep **Framework Preset: Django**.
+4. Add the database (Option A: paste `MYSQL_URL`; Option B: install the
+   integration).
+
+### Step 2 — environment variables
 
 Project → **Settings → Environment Variables** (add to Production *and*
 Preview):
@@ -532,58 +557,44 @@ Preview):
 | --- | --- |
 | `DJANGO_SECRET_KEY` | a long random string |
 | `DJANGO_DEBUG` | `False` |
-| `DJANGO_ALLOWED_HOSTS` | your domain, e.g. `nexora.vercel.app` |
-| `MYSQL_URL` | the connection string from Step 1 |
-| `DB_SSL` | `True` if the provider requires TLS (the `?ssl=true` in the URL does the same thing) |
+| `DJANGO_ALLOWED_HOSTS` | optional — your custom domain, e.g. `nexora.example.com` |
+| `MYSQL_URL` | Option A connection string (`?ssl=true` enables TLS) |
+| `DATABASE_URL` / `POSTGRES_URL` | Option B — injected by the integration, nothing to type |
+| `DB_SSL` | `True` only if your MySQL provider needs TLS and the URL has no `?ssl=true` |
 
-`*.vercel.app` hostnames, their CSRF origins and HTTPS detection are already
-handled in `settings.py`, so the first deployment works even before you add a
-custom domain.
+`*.vercel.app` hostnames, their CSRF origins and HTTPS detection are handled in
+`settings.py`, so the deployment works before you add a custom domain.
 
-### Step 3 — create the tables (once)
+### Step 3 — deploy
 
-Migrations are never run automatically by Vercel. Run them from your project
-folder against the hosted database:
+Click **Deploy** (or push to the connected branch). The build runs:
 
-```powershell
-$env:MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true"
-python manage.py migrate
+```text
+python manage.py migrate --noinput
 python manage.py seed_demo
-Remove-Item Env:MYSQL_URL
+python manage.py collectstatic --noinput
 ```
 
-Git Bash:
+so the first deployment already has its tables and the demo accounts. The
+`seed_demo` step is safe to repeat: it only creates what is missing and leaves
+existing contacts alone. Open the `.vercel.app` URL and sign in with
+`admin` / `Nexora@123`, then change the password.
 
-```bash
-MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true" python manage.py migrate
-MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true" python manage.py seed_demo
-```
+> Prefer to run migrations yourself? Delete the `buildCommand` line from
+> `vercel.json` and run the three commands locally with the database URL set
+> (`$env:MYSQL_URL="..."` in PowerShell, `MYSQL_URL="..." python manage.py migrate`
+> in Git Bash). Vercel never migrates on its own.
 
-### Step 4 — deploy
+### Step 4 — reading a failed deployment
 
-Push to GitHub and import the repository at vercel.com/new, or from the CLI:
-
-```bash
-npx vercel --prod
-```
-
-Vercel finds `manage.py`, installs `requirements.txt`, runs `collectstatic` by
-itself (because `STATIC_ROOT` is set) and serves `/static/` from its CDN.
-
-### If the build still reports DJANGO_SETTINGS_FAILED
-
-That message means Vercel could not import your settings — nearly always
-because Django was never installed. Read the lines **above** the error in the
-build log:
-
-* `Ignored the following versions that require a different python version` →
-  the Python pin is not applied. Check that `.python-version` is committed
-  (`git ls-files .python-version`) and that Project → Settings → General →
-  **Root Directory** is the repository root.
-* `ModuleNotFoundError: No module named 'django'` (or `'dotenv'`) →
-  `requirements.txt` is not where Vercel looks. Same Root Directory check.
-* A traceback pointing into `nexora/settings.py` → the text after the colon is
-  the real error; fix that line.
+| What you see | What it means |
+| --- | --- |
+| `404 NOT_FOUND` on every URL | The project's **Framework Preset** is not Django or **Root Directory** points at a subfolder. Fix it in Settings → General, then redeploy. |
+| Build stops at `migrate` with `Can't connect to MySQL server on '127.0.0.1'` | No database URL reached the build. Add `MYSQL_URL` (or the Postgres integration) to **all** environments, then redeploy. |
+| Build stops at `migrate` with `Access denied` / `password authentication failed` | The URL is wrong or its password contains characters that must be percent-encoded (`@` → `%40`, `#` → `%23`). |
+| `[DJANGO_SETTINGS_FAILED]` | Vercel could not import your settings. Read the lines **above** the error: `Ignored the following versions that require a different python version` (the Python pin is missing) or `ModuleNotFoundError: No module named 'django'` (requirements not found → Root Directory). |
+| Build succeeds, page returns 500 | The function cannot reach the database at runtime: the variable was added to Production but not Preview, or the database was paused. Check Vercel → Deployments → Functions → Logs. |
+| Page loads but CSS/JS is missing | `STATIC_ROOT` must stay set (it is); redeploy after changing static files. |
 
 You can run Vercel's exact settings check locally:
 
@@ -595,7 +606,7 @@ Printing `nexora.settings` means the settings module itself is healthy.
 
 ### Serverless behaviour built into the project
 
-* Sessions live in MySQL, so any function instance can serve any request.
+* Sessions live in the database, so any function instance can serve any request.
 * `CONN_MAX_AGE` is `0` on Vercel (no stale connections between invocations)
   and `60` locally.
 * `SECURE_PROXY_SSL_HEADER` is enabled, so Django knows the request arrived over
@@ -617,6 +628,7 @@ Printing `nexora.settings` means the settings module itself is healthy.
 | `DB_NAME` / `DB_USER` / `DB_PASSWORD` | MySQL database and credentials | `nexora_db` / `nexora_user` / empty |
 | `DB_HOST` / `DB_PORT` | MySQL address | `127.0.0.1` / `3306` |
 | `MYSQL_URL` | Full MySQL URL; overrides the five `DB_*` values above | empty |
+| `POSTGRES_URL` / `DATABASE_URL` | PostgreSQL URL (used only when it starts with `postgres://`; injected by Vercel Marketplace Postgres) | empty |
 | `DB_SSL` | Require TLS to MySQL (hosted providers) | `False` |
 | `SQLITE_NAME` | File used when `DB_ENGINE=sqlite` | `db.sqlite3` |
 
