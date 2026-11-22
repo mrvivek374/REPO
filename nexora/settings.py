@@ -135,8 +135,9 @@ def _mysql_from_url(url: str) -> dict:
     parsed = urlparse(url.replace("mysql2://", "mysql://", 1))
     query = parse_qs(parsed.query)
     ssl_flag = env_bool("DB_SSL", False) or any(
-        query.get(key, [""])[0].lower() in {"1", "true", "required", "verify_ca", "verify_identity"}
-        for key in ("ssl", "ssl-mode", "ssl_mode", "sslmode")
+        query.get(key, [""])[0].lower()
+        in {"1", "true", "required", "strict", "verify_ca", "verify_identity"}
+        for key in ("ssl", "ssl-mode", "ssl_mode", "sslmode", "sslaccept")
     )
     return {
         "ENGINE": "django.db.backends.mysql",
