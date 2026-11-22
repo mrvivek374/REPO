@@ -20,7 +20,7 @@ from .forms import (
     UserCreateForm,
     UserEditForm,
 )
-from .models import Role, User, UserPreference
+from .models import Role, User
 from .permissions import permission_groups, permission_required
 
 

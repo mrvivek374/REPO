@@ -24,10 +24,11 @@ data and no `localStorage` pretending to be a database.
 9. [Daily use: commands you will actually type](#9-daily-use-commands-you-will-actually-type)
 10. [Testing](#10-testing)
 11. [Database design](#11-database-design)
-12. [Configuration reference](#12-configuration-reference)
-13. [Security notes](#13-security-notes)
-14. [Troubleshooting](#14-troubleshooting)
-15. [Scope: what is deliberately excluded](#15-scope-what-is-deliberately-excluded)
+12. [Deploying to Vercel](#12-deploying-to-vercel)
+13. [Configuration reference](#13-configuration-reference)
+14. [Security notes](#14-security-notes)
+15. [Troubleshooting](#15-troubleshooting)
+16. [Scope: what is deliberately excluded](#16-scope-what-is-deliberately-excluded)
 
 ---
 
@@ -494,24 +495,136 @@ an exported snapshot for reference and manual import.
 
 ---
 
-## 12. Configuration reference
+## 12. Deploying to Vercel
+
+NEXORA runs on Vercel as a single Python function. Three small files make that
+work and are already in the repository:
+
+| File | Purpose |
+| --- | --- |
+| `.python-version` | Pins Python 3.12. Django 6.1 requires Python ≥ 3.12 — without the pin Vercel can pick an older runtime, `pip install Django==6.1.3` is skipped, and the build fails with `[DJANGO_SETTINGS_FAILED]`. |
+| `vercel.json` | Declares the Django framework and the `nexora/asgi.py` function (60 s, 1 GB). |
+| `.vercelignore` | Keeps `.venv`, `db.sqlite3`, `staticfiles/` and `.env` out of the upload. |
+
+### Two things a serverless host cannot give you
+
+1. **No local MySQL.** `127.0.0.1:3306` on your computer does not exist inside
+   Vercel. Use a hosted MySQL (PlanetScale, Aiven, Clever Cloud, TiDB
+   Serverless, Railway — Vercel's Marketplace also lists MySQL integrations)
+   and pass its connection URL to the deployment.
+2. **No persistent SQLite.** Vercel's filesystem is read-only and per
+   invocation, so a `db.sqlite3` there would be empty and would vanish.
+
+### Step 1 — create a hosted MySQL database
+
+Create the database and copy its connection string. It usually looks like:
+
+```text
+mysql://user:password@host:3306/nexora_db?ssl=true
+```
+
+### Step 2 — set environment variables in Vercel
+
+Project → **Settings → Environment Variables** (add to Production *and*
+Preview):
+
+| Name | Value |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | a long random string |
+| `DJANGO_DEBUG` | `False` |
+| `DJANGO_ALLOWED_HOSTS` | your domain, e.g. `nexora.vercel.app` |
+| `MYSQL_URL` | the connection string from Step 1 |
+| `DB_SSL` | `True` if the provider requires TLS (the `?ssl=true` in the URL does the same thing) |
+
+`*.vercel.app` hostnames, their CSRF origins and HTTPS detection are already
+handled in `settings.py`, so the first deployment works even before you add a
+custom domain.
+
+### Step 3 — create the tables (once)
+
+Migrations are never run automatically by Vercel. Run them from your project
+folder against the hosted database:
+
+```powershell
+$env:MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true"
+python manage.py migrate
+python manage.py seed_demo
+Remove-Item Env:MYSQL_URL
+```
+
+Git Bash:
+
+```bash
+MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true" python manage.py migrate
+MYSQL_URL="mysql://user:password@host:3306/nexora_db?ssl=true" python manage.py seed_demo
+```
+
+### Step 4 — deploy
+
+Push to GitHub and import the repository at vercel.com/new, or from the CLI:
+
+```bash
+npx vercel --prod
+```
+
+Vercel finds `manage.py`, installs `requirements.txt`, runs `collectstatic` by
+itself (because `STATIC_ROOT` is set) and serves `/static/` from its CDN.
+
+### If the build still reports DJANGO_SETTINGS_FAILED
+
+That message means Vercel could not import your settings — nearly always
+because Django was never installed. Read the lines **above** the error in the
+build log:
+
+* `Ignored the following versions that require a different python version` →
+  the Python pin is not applied. Check that `.python-version` is committed
+  (`git ls-files .python-version`) and that Project → Settings → General →
+  **Root Directory** is the repository root.
+* `ModuleNotFoundError: No module named 'django'` (or `'dotenv'`) →
+  `requirements.txt` is not where Vercel looks. Same Root Directory check.
+* A traceback pointing into `nexora/settings.py` → the text after the colon is
+  the real error; fix that line.
+
+You can run Vercel's exact settings check locally:
+
+```powershell
+python -c "import django.core.management, runpy, os; django.core.management.execute_from_command_line=lambda *a, **k: None; runpy.run_path('manage.py', run_name='__main__'); print(os.environ.get('DJANGO_SETTINGS_MODULE'))"
+```
+
+Printing `nexora.settings` means the settings module itself is healthy.
+
+### Serverless behaviour built into the project
+
+* Sessions live in MySQL, so any function instance can serve any request.
+* `CONN_MAX_AGE` is `0` on Vercel (no stale connections between invocations)
+  and `60` locally.
+* `SECURE_PROXY_SSL_HEADER` is enabled, so Django knows the request arrived over
+  HTTPS through Vercel's proxy.
+* `DEBUG` defaults to `False` whenever `VERCEL` is set, and `True` locally.
+
+---
+
+## 13. Configuration reference
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `DJANGO_SECRET_KEY` | Django signing key — set a long random value | insecure dev value |
-| `DJANGO_DEBUG` | Debug mode (`False` in production) | `True` |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames | `127.0.0.1,localhost` |
+| `DJANGO_DEBUG` | Debug mode (`False` in production) | `True` locally, `False` when `VERCEL` is set |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames | `127.0.0.1,localhost` (+ `*.vercel.app` on Vercel) |
+| `CSRF_TRUSTED_ORIGINS` | Extra trusted origins; hosts above are added automatically | derived from hosts |
 | `DJANGO_TIME_ZONE` | Business timezone | `Asia/Kolkata` |
 | `DB_ENGINE` | `mysql` or `sqlite` | `mysql` |
 | `DB_NAME` / `DB_USER` / `DB_PASSWORD` | MySQL database and credentials | `nexora_db` / `nexora_user` / empty |
 | `DB_HOST` / `DB_PORT` | MySQL address | `127.0.0.1` / `3306` |
+| `MYSQL_URL` | Full MySQL URL; overrides the five `DB_*` values above | empty |
+| `DB_SSL` | Require TLS to MySQL (hosted providers) | `False` |
 | `SQLITE_NAME` | File used when `DB_ENGINE=sqlite` | `db.sqlite3` |
 
 `.env` is git-ignored; `.env.example` documents every key.
 
 ---
 
-## 13. Security notes
+## 14. Security notes
 
 * Secrets and database passwords live only in `.env`.
 * Passwords use Django's PBKDF2-SHA256 hashing with per-user salts; the demo
@@ -530,7 +643,7 @@ password.
 
 ---
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 **`Access denied for user 'nexora_user'@'localhost'`**
 The database user does not exist yet or the password in `.env` is wrong.
@@ -573,7 +686,7 @@ server.
 
 ---
 
-## 15. Scope: what is deliberately excluded
+## 16. Scope: what is deliberately excluded
 
 NEXORA is a focused Business Contact Management System. It intentionally does
 **not** include AI lead scoring or predictions, bulk marketing email/SMS,

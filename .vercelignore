@@ -1,0 +1,15 @@
+# Never upload local-only files to Vercel
+.venv/
+venv/
+.env
+.env.local
+.env.bak
+db.sqlite3
+staticfiles/
+server.log
+server.err.log
+.tmp-mysql/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
